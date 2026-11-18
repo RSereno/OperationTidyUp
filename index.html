@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2b2540">
 <title>Operation Tidy-Up: Mission Poop-astrophe (First Person)</title>
 <style>
   :root { --ink: #5b4a7e; --soft: #a99cc4; --good: #4f8f5f; --alarm: #e8456a; }
@@ -10,7 +13,7 @@
   #gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 
   .hud { position: fixed; pointer-events: none; }
-  #top { top: 0; left: 0; right: 0; height: 84px; background: linear-gradient(#fff7fbee, #fff7fbcc); border-bottom: 4px solid #d9cdf2; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; box-sizing: border-box; transition: border-color .3s; }
+  #top { top: 0; left: 0; right: 0; height: 84px; background: linear-gradient(#fff7fbee, #fff7fbcc); border-bottom: 4px solid #d9cdf2; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 22px; box-sizing: border-box; transition: border-color .3s; }
   body.panic #top { border-bottom-color: #ffb199; }
   #top .l, #top .r { font-size: 14px; color: var(--ink); line-height: 1.5; min-width: 150px; }
   #top .l b, #top .r b { font-size: 15px; }
@@ -55,6 +58,39 @@
   @keyframes pop { from { transform: scale(.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
   #fatal { display: none; position: fixed; inset: 0; background: #2b2540; color: #fff; align-items: center; justify-content: center; text-align: center; padding: 30px; font-size: 18px; }
+  /* ---- touch / mobile ---- */
+  html, body { touch-action: none; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  #touchPad { position: fixed; inset: 0; z-index: 5; display: none; touch-action: none; }
+  #joy { position: fixed; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; background: rgba(255,255,255,.16); border: 3px solid rgba(255,255,255,.5); display: none; z-index: 6; pointer-events: none; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(255,255,255,.6); }
+  #actBtn, #pauseBtn, #muteBtn { position: fixed; z-index: 6; display: none; font-family: inherit; font-weight: bold; color: #5a3a1a; border: 3px solid #fff; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #actBtn { right: calc(20px + env(safe-area-inset-right)); bottom: calc(30px + env(safe-area-inset-bottom)); width: 96px; height: 96px; border-radius: 50%; background: rgba(255,214,107,.7); font-size: 17px; opacity: .6; }
+  #actBtn.ready { opacity: 1; background: rgba(255,214,107,.96); box-shadow: 0 0 0 7px rgba(255,214,107,.45); }
+  #actBtn.down { transform: scale(.92); }
+  #pauseBtn, #muteBtn { right: calc(12px + env(safe-area-inset-right)); width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,.82); font-size: 16px; color: #5b4a7e; padding: 0; }
+  #pauseBtn { top: 96px; } #muteBtn { top: 146px; }
+  body.touch[data-mode="playing"] #touchPad { display: block; }
+  body.touch[data-mode="playing"] #actBtn, body.touch[data-mode="playing"] #pauseBtn, body.touch[data-mode="playing"] #muteBtn { display: block; }
+  #touchHelp { display: none; }
+  body.touch #touchHelp { display: block; }
+  body.touch .deskOnly, body.touch #help, body.touch #snd { display: none; }
+  body.touch #mini { right: auto; left: calc(10px + env(safe-area-inset-left)); top: 92px; bottom: auto; width: 120px; height: 87px; }
+  @media (max-width: 720px), (max-height: 520px) {
+    #top { height: 58px; padding: 0 12px; }
+    #top .l { visibility: hidden; }
+    #top .r { min-width: 0; font-size: 12px; }
+    #top .r b { font-size: 13px; }
+    #pct { font-size: 30px; }
+    #bar { width: 160px; height: 9px; margin-top: 3px; }
+    #msg { top: 66px; font-size: 14px; padding: 7px 14px; max-width: 86vw; }
+    #prompt { top: calc(50% + 28px); font-size: 13px; }
+    body.touch #mini { top: 66px; }
+    #pauseBtn { top: 66px; } #muteBtn { top: 114px; }
+    #actBtn { width: 84px; height: 84px; font-size: 15px; }
+    .screen h1 { font-size: 24px; } .screen h2 { font-size: 16px; margin-bottom: 8px; }
+    .screen p { font-size: 13px; margin: 3px 0; }
+    .screen button { margin-top: 12px; padding: 8px 26px; }
+  }
 </style>
 </head>
 <body>
@@ -73,11 +109,19 @@
 <canvas id="mini" class="hud" width="180" height="130"></canvas>
 <div id="help" class="hud">WASD / Arrows: move &nbsp;·&nbsp; Mouse: look &nbsp;·&nbsp; Q / E: turn &nbsp;·&nbsp; Space: scoop / dump<br>M: mute &nbsp;·&nbsp; N: minimap &nbsp;·&nbsp; Esc: pause</div>
 
+<div id="touchPad"></div>
+<div id="joy"><div id="joyKnob"></div></div>
+<button id="actBtn" type="button">SCOOP</button>
+<button id="pauseBtn" type="button" aria-label="Pause">II</button>
+<button id="muteBtn" type="button" aria-label="Sound">&#128266;</button>
+
 <div id="overlay" class="screen show">
   <h1 id="ovTitle">Operation Tidy-Up</h1>
   <h2 id="ovSub">Mission Poop-astrophe</h2>
   <p id="ovText">Level 1: The Living Room. Mr. Custódio must clean up every one of Buba's surprises before the mother-in-law arrives.</p>
-  <p>Face a poop and press <b>Space</b> to scoop it up. Carry it to the green bin and press <b>Space</b> again to dump it. You walk slower while carrying.</p>
+  <p>Buba makes three colours of mess. Scoop each one up, carry it to the bin of the <b>same colour</b> and dump it. You walk slower while carrying.</p>
+  <p class="deskOnly">Move: WASD / arrows &nbsp;·&nbsp; Look: mouse &nbsp;·&nbsp; Scoop / dump: <b>Space</b></p>
+  <p id="touchHelp">Left thumb: move &nbsp;·&nbsp; Right thumb: look around &nbsp;·&nbsp; Yellow button: scoop / dump.<br>Tip: it plays best in landscape.</p>
   <button id="startBtn">Click to start</button>
 </div>
 
@@ -96,11 +140,22 @@
   if (typeof THREE === 'undefined') { document.getElementById('fatal').style.display = 'flex'; return; }
 
   // ------------------------------------------------------------ constants
-  const TOTAL = 10, SPAWNED = 9, PANIC_AT = 9;       // 9 scattered + 1 dropped by Buba = 100%
+  // Buba makes three kinds of poop. Each kind has its own colour and only fits in the matching bin.
+  const TYPES = [
+    { name: 'brown', body: [0x8b5a2e, 0x9a6732, 0xa9753d], bin: 0xb0824f, css: '#b0824f', dot: '#7a4a1f', x: 3.4, z: 5.6 },
+    { name: 'green', body: [0x4f9f3a, 0x62b348, 0x7ccb5c], bin: 0x3fae6a, css: '#3fae6a', dot: '#3fa33a', x: -6.8, z: 5.5 },
+    { name: 'pink', body: [0xdc5f93, 0xe879a8, 0xf293bb], bin: 0xf07fae, css: '#f07fae', dot: '#e0609a', x: 7.5, z: -5.3 }
+  ];
+  const PER_COLOR = 5;                                   // poops of each colour scattered at the start
+  const REG_TOTAL = TYPES.length * PER_COLOR;            // 15 regular poops = the first 90%
+  const TOTAL = REG_TOTAL + 1;                           // + the one Buba drops at 90% = 100%
+  const BINS = TYPES.map((tp, i) => ({ type: i, x: tp.x, z: tp.z, marker: null }));
+  const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const TOUCH_SENS = 0.0055;
   const ROOM = { x: 9, z: 6.5, h: 3.2 };
   const EYE = 1.6, PLAYER_R = 0.35, BUBA_R = 0.45, REACH = 1.9, SENS = 0.0022;
   const CARRY_SLOW = 0.72;               // walking speed multiplier while carrying a poop
-  const BIN = { x: 3.4, z: 5.6 };        // where poops must be dumped
+
   // Optional: put a real photo here (a data: URL works when opening the file directly) and it replaces the drawn portrait
   const PORTRAIT_SRC = '';
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -108,6 +163,9 @@
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   const angDiff = (a, b) => ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
   const $ = id => document.getElementById(id);
+  const isTouch = () => document.body.classList.contains('touch');
+  const haptic = p => { try { if (isTouch() && navigator.vibrate) navigator.vibrate(p); } catch (e) { /* unsupported */ } };
+  const introMsg = () => 'Scoop poops (' + (isTouch() ? 'tap the button' : 'SPACE') + ') and sort them into the matching bins!';
 
   // ------------------------------------------------------------ audio (WebAudio, no files)
   const Sound = (() => {
@@ -190,6 +248,7 @@
       bark: safe(() => { const t = ac.currentTime; blip(560, 300, t, 0.12, 'sawtooth', 0.13); blip(520, 270, t + 0.17, 0.12, 'sawtooth', 0.13); }),
       pop: safe(() => blip(180, 520, ac.currentTime, 0.15, 'square', 0.12)),
       scoop: safe(() => { const t = ac.currentTime; noise(t, 0.12, 0.2, 900, 'lowpass'); blip(200, 420, t, 0.1, 'sine', 0.15); }),
+      buzz: safe(() => { const t = ac.currentTime; blip(170, 110, t, 0.22, 'sawtooth', 0.14); blip(160, 100, t + 0.12, 0.22, 'sawtooth', 0.14); }),
       win: safe(() => { const t = ac.currentTime; [60, 64, 67, 72, 76, 79, 84].forEach((n, i) => tone(n, t + i * 0.09, 0.4, 'triangle', 0.2)); })
     };
   })();
@@ -197,7 +256,7 @@
   // ------------------------------------------------------------ three.js scene
   const canvas = $('gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, COARSE ? 1.5 : 2));
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf4d9e6);
   const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 60);
@@ -299,31 +358,37 @@
     pm.position.set(fx, fy, fz + 0.075); scene.add(pm);
   }
 
-  // the bin where carried poops get dumped
-  let binMarker = null;
-  function buildBin() {
-    const g = new THREE.Group(); g.position.set(BIN.x, 0, BIN.z); scene.add(g);
-    cyl(0.36, 0.3, 0.85, 0x5fb98a, 0, 0.425, 0, g, 20);
-    cyl(0.365, 0.315, 0.1, 0xffffff, 0, 0.45, 0, g, 20);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.37, 0.04, 8, 24), lam(0x3f8f66));
-    rim.rotation.x = Math.PI / 2; rim.position.y = 0.86; g.add(rim);
-    const bag = sph(0.3, 0x2f8f5b, 0, 0.92, 0, g, 12); bag.scale.set(1, 0.55, 1);
-    solid(BIN.x - 0.45, BIN.z - 0.45, BIN.x + 0.45, BIN.z + 0.45);
-
-    // marker shown only while carrying: ring, arrow and label
-    const m = new THREE.Group(); m.position.set(BIN.x, 0, BIN.z); m.visible = false; scene.add(m);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.92, 36), new THREE.MeshBasicMaterial({ color: 0x4fe08a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
-    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; m.add(ring);
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.3, 12), new THREE.MeshBasicMaterial({ color: 0x4fe08a }));
-    cone.rotation.x = Math.PI; cone.position.y = 1.5; m.add(cone);
+  function canvasSprite(text, css, w, h) {
     const c = document.createElement('canvas'); c.width = 256; c.height = 96;
     const x = c.getContext('2d');
-    x.fillStyle = '#2f8f5b'; x.beginPath(); x.moveTo(24, 6); x.lineTo(232, 6); x.quadraticCurveTo(250, 6, 250, 24); x.lineTo(250, 60);
+    x.fillStyle = css; x.beginPath(); x.moveTo(24, 6); x.lineTo(232, 6); x.quadraticCurveTo(250, 6, 250, 24); x.lineTo(250, 60);
     x.quadraticCurveTo(250, 78, 232, 78); x.lineTo(24, 78); x.quadraticCurveTo(6, 78, 6, 60); x.lineTo(6, 24); x.quadraticCurveTo(6, 6, 24, 6); x.fill();
-    x.fillStyle = '#fff'; x.font = 'bold 36px Trebuchet MS, sans-serif'; x.textAlign = 'center'; x.fillText('DUMP HERE', 128, 55);
+    x.font = 'bold 38px Trebuchet MS, sans-serif'; x.textAlign = 'center'; x.lineWidth = 7; x.lineJoin = 'round';
+    x.strokeStyle = 'rgba(40,25,60,.75)'; x.strokeText(text, 128, 55);
+    x.fillStyle = '#fff'; x.fillText(text, 128, 55);
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-    spr.scale.set(1.5, 0.56, 1); spr.position.y = 1.95; m.add(spr);
-    binMarker = { group: m, ring, cone, spr };
+    spr.scale.set(w, h, 1); return spr;
+  }
+
+  // one bin per poop colour; the matching bin gets a marker while you carry that colour
+  function buildBin(b) {
+    const T = TYPES[b.type], col = new THREE.Color(T.bin);
+    const g = new THREE.Group(); g.position.set(b.x, 0, b.z); scene.add(g);
+    cyl(0.36, 0.3, 0.85, T.bin, 0, 0.425, 0, g, 20);
+    cyl(0.365, 0.315, 0.1, 0xffffff, 0, 0.45, 0, g, 20);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.37, 0.04, 8, 24), lam(col.clone().multiplyScalar(0.7).getHex()));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.86; g.add(rim);
+    const bag = sph(0.3, col.clone().multiplyScalar(0.6).getHex(), 0, 0.92, 0, g, 12); bag.scale.set(1, 0.55, 1);
+    solid(b.x - 0.45, b.z - 0.45, b.x + 0.45, b.z + 0.45);
+    const label = canvasSprite(T.name.toUpperCase(), T.css, 1.1, 0.41); label.position.set(0, 1.35, 0); g.add(label);
+
+    const m = new THREE.Group(); m.position.set(b.x, 0, b.z); m.visible = false; scene.add(m);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.92, 36), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; m.add(ring);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.3, 12), new THREE.MeshBasicMaterial({ color: T.bin }));
+    cone.rotation.x = Math.PI; cone.position.y = 1.7; m.add(cone);
+    const spr = canvasSprite('DUMP HERE', T.css, 1.5, 0.56); spr.position.y = 2.25; m.add(spr);
+    b.marker = { group: m, ring, cone, spr };
   }
 
   function buildRoom() {
@@ -418,7 +483,7 @@
     sph(0.28, 0x5cc477, -8.4, 1.25, -5.7, scene, 12);
     solid(-8.6, -6.0, -7.8, -5.2);
 
-    buildBin();
+    BINS.forEach(buildBin);
   }
 
   function pushOut(p, r) {
@@ -454,15 +519,16 @@
 
   // the poop riding on the blade while carrying (no depth test so it always draws over the blade)
   const carried = new THREE.Group();
+  const carriedBody = [];
   (function () {
     const add = (geo, color, x, y, z, sy) => {
       const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color, depthTest: false }));
       m.position.set(x, y, z); if (sy) m.scale.y = sy;
       m.renderOrder = 1000 + carried.children.length; carried.add(m); return m;
     };
-    add(new THREE.SphereGeometry(0.26, 12, 10), 0x8b5a2e, 0, 0.13, 0, 0.55);
-    add(new THREE.SphereGeometry(0.2, 12, 10), 0x9a6732, 0, 0.3, 0, 0.6);
-    add(new THREE.SphereGeometry(0.13, 12, 10), 0xa9753d, 0, 0.45, 0, 0.65);
+    carriedBody.push(add(new THREE.SphereGeometry(0.26, 12, 10), 0x8b5a2e, 0, 0.13, 0, 0.55));
+    carriedBody.push(add(new THREE.SphereGeometry(0.2, 12, 10), 0x9a6732, 0, 0.3, 0, 0.6));
+    carriedBody.push(add(new THREE.SphereGeometry(0.13, 12, 10), 0xa9753d, 0, 0.45, 0, 0.65));
     for (const sx of [-1, 1]) add(new THREE.SphereGeometry(0.055, 8, 8), 0xffffff, sx * 0.075, 0.33, 0.16);
     for (const sx of [-1, 1]) add(new THREE.SphereGeometry(0.028, 8, 8), 0x111111, sx * 0.075, 0.33, 0.205);
   })();
@@ -519,9 +585,9 @@
   // ------------------------------------------------------------ poops
   const stinkMat = new THREE.MeshBasicMaterial({ color: 0x7ecb64, transparent: true, opacity: 0.6, depthWrite: false });
   const stinkGeo = new THREE.SphereGeometry(0.045, 6, 6);
-  function makePoopMesh(glow) {
+  function makePoopMesh(glow, type) {
     const g = new THREE.Group();
-    const c1 = 0x8b5a2e, c2 = 0x9a6732, c3 = 0xa9753d;
+    const [c1, c2, c3] = TYPES[type].body;
     const a = sph(0.26, c1, 0, 0.13, 0, g, 14); a.scale.y = 0.55;
     const b = sph(0.2, c2, 0, 0.3, 0, g, 14); b.scale.y = 0.6;
     const c = sph(0.13, c3, 0, 0.45, 0, g, 12); c.scale.y = 0.65;
@@ -569,6 +635,7 @@
   // ------------------------------------------------------------ state
   let s = null, lockActive = false;
   const keys = new Set();
+  const touch = { move: { x: 0, z: 0 }, joyId: null, lookId: null, ox: 0, oy: 0, lx: 0, ly: 0 };
 
   function reset(mode) {
     if (s) { for (const p of s.poops) scene.remove(p.mesh); }
@@ -578,32 +645,37 @@
       mode: mode || 'playing', phase: 1, t: 0,
       player: { x: 0, z: 4.6, yaw: 0, pitch: -0.15, speed: 3.6, swing: 0, cool: 0, bob: 0 },
       buba: { x: 5.5, z: -3, ang: Math.PI, dir: Math.PI, wanderT: 0, pause: 0, wag: 0, panicT: 0, zig: 0, wp: null, dropped: false, step: 0, moving: false },
-      poops: [], cleaned: 0, cleanedSpots: [], dropSpot: null,
+      poops: [], cleaned: 0, regDumped: 0, finalType: 0, cleanedSpots: [], dropSpot: null,
       shake: 0, msgT: 0, target: null, carry: null, actionBuf: 0
     };
     spawnPoops();
     document.body.classList.remove('panic');
     $('victory').classList.remove('show'); $('confetti').style.display = 'none'; confettiOn = false;
     Sound.setMode(s.mode === 'playing' ? 'calm' : 'off');
-    if (s.mode === 'playing') say('Scoop poops with SPACE and dump them in the green bin!', 4);
-    if (binMarker) binMarker.group.visible = false;
+    if (s.mode === 'playing') say(introMsg(), 4);
+    BINS.forEach(b => { if (b.marker) b.marker.group.visible = false; });
     syncCamera();
   }
 
   function spawnPoops() {
-    let tries = 0;
-    while (s.poops.length < SPAWNED && tries++ < 3000) {
+    // PER_COLOR of every colour, shuffled
+    const kinds = [];
+    TYPES.forEach((tp, i) => { for (let k = 0; k < PER_COLOR; k++) kinds.push(i); });
+    for (let i = kinds.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
+    let tries = 0, gap = 2.3;
+    while (s.poops.length < REG_TOTAL && tries++ < 8000) {
+      if (tries % 1000 === 0) gap = Math.max(1.3, gap - 0.2);   // loosen the spacing if the room is crowded
       const x = rand(-7.8, 7.8), z = rand(-5.3, 5.3);
       if (inFurniture(x, z, 0.9)) continue;
       if (Math.hypot(x - s.player.x, z - s.player.z) < 3.5) continue;
       if (Math.hypot(x - s.buba.x, z - s.buba.z) < 2.2) continue;
-      if (s.poops.some(o => Math.hypot(o.x - x, o.z - z) < 2.6)) continue;
-      addPoop(x, z, false);
+      if (s.poops.some(o => Math.hypot(o.x - x, o.z - z) < gap)) continue;
+      addPoop(x, z, false, kinds[s.poops.length]);
     }
   }
-  function addPoop(x, z, glow) {
-    const mesh = makePoopMesh(glow); mesh.position.set(x, 0, z); scene.add(mesh);
-    const p = { x, z, r: 0.26, seed: Math.random() * 10, mesh, glow };
+  function addPoop(x, z, glow, type) {
+    const mesh = makePoopMesh(glow, type); mesh.position.set(x, 0, z); scene.add(mesh);
+    const p = { x, z, r: 0.26, seed: Math.random() * 10, mesh, glow, type };
     s.poops.push(p); return p;
   }
 
@@ -622,49 +694,67 @@
     return best;
   }
 
-  function nearBin() {
-    const pl = s.player, dx = BIN.x - pl.x, dz = BIN.z - pl.z, d = Math.hypot(dx, dz);
-    if (d > REACH + 0.5) return false;
-    const fx = -Math.sin(pl.yaw), fz = -Math.cos(pl.yaw);
-    return d < 1.3 || (dx * fx + dz * fz) / (d || 1) > 0.45;
+  // the bin in front of you (within reach), if any
+  function binInReach() {
+    const pl = s.player, fx = -Math.sin(pl.yaw), fz = -Math.cos(pl.yaw);
+    let best = null, bd = Infinity;
+    for (const b of BINS) {
+      const dx = b.x - pl.x, dz = b.z - pl.z, d = Math.hypot(dx, dz);
+      if (d > REACH + 0.5) continue;
+      if ((d < 1.3 || (dx * fx + dz * fz) / (d || 1) > 0.45) && d < bd) { bd = d; best = b; }
+    }
+    return best;
   }
 
-  // Space: scoop a poop onto the shovel, or dump the carried poop into the bin
+  // Action (Space / button): scoop a poop onto the shovel, or dump the carried one into a bin
   function act() {
     const pl = s.player;
     pl.swing = 0.3; pl.cool = 0.38;
     Sound.swish();
-    if (s.carry) {
-      if (nearBin()) dumpCarried();
-      else say('Take it to the green bin first!', 2);
-    } else {
-      const t = findTarget();
-      if (t) pickUp(t);
-    }
+    if (s.carry) tryDump();
+    else { const t = findTarget(); if (t) pickUp(t); }
   }
 
   function pickUp(p) {
     scene.remove(p.mesh);
     s.poops.splice(s.poops.indexOf(p), 1);
     s.cleanedSpots.push({ x: p.x, z: p.z });      // this floor spot is clean now (Buba may re-soil it later)
-    s.carry = { glow: p.glow };
-    Sound.scoop();
-    burst(p.x, 0.2, p.z, [0x8b5a2e, 0xa9753d], 10, 1.4, 0.6, 0.05);
+    s.carry = { type: p.type, glow: p.glow };
+    const T = TYPES[p.type];
+    carriedBody.forEach((m, i) => m.material.color.setHex(T.body[i]));
+    Sound.scoop(); haptic(15);
+    burst(p.x, 0.2, p.z, T.body.slice(0, 2), 10, 1.4, 0.6, 0.05);
     s.shake = Math.max(s.shake, 0.06);
-    say('Got it! Carry it to the green bin.', 3);
+    say('Got a ' + T.name + ' one! Take it to the ' + T.name + ' bin.', 3.5);
   }
 
-  function dumpCarried() {
+  function tryDump() {
+    const T = TYPES[s.carry.type], bin = binInReach();
+    if (!bin) { say('Take it to the ' + T.name + ' bin!', 2); return; }
+    if (bin.type !== s.carry.type) {
+      Sound.buzz(); haptic([80, 40, 80]); s.shake = Math.max(s.shake, 0.12);
+      say('Wrong bin! A ' + T.name + ' one goes in the ' + T.name + ' bin.', 2.8);
+      return;
+    }
+    dumpCarried(bin);
+  }
+
+  function dumpCarried(bin) {
+    const T = TYPES[s.carry.type], wasFinal = s.carry.glow;
     s.carry = null;
     s.cleaned++;
-    Sound.splat();
-    burst(BIN.x, 1.1, BIN.z, [0x8b5a2e, 0xa9753d, 0x7bd88f, 0xffe27a], 22, 1.8, 0.9, 0.07);
-    burst(BIN.x, 1.2, BIN.z, [0xffffff, 0xfff3a8, 0xbff0ff], 10, 1.4, 1.2, 0.05);
+    if (!wasFinal) s.regDumped++;
+    Sound.splat(); haptic(30);
+    burst(bin.x, 1.1, bin.z, T.body.concat([0xffe27a]), 22, 1.8, 0.9, 0.07);
+    burst(bin.x, 1.2, bin.z, [0xffffff, 0xfff3a8, 0xbff0ff], 10, 1.4, 1.2, 0.05);
     s.shake = Math.max(s.shake, 0.15);
     if (s.cleaned >= TOTAL) { win(); return; }
-    if (s.cleaned >= PANIC_AT && s.phase === 1) startPanic();
-    else say('Dumped! ' + (TOTAL - s.cleaned) + ' to go.', 2);
+    if (s.regDumped >= REG_TOTAL && s.phase === 1) startPanic();
+    else say('Dumped! ' + (REG_TOTAL - s.regDumped) + ' to go.', 2);
   }
+
+  // progress: the 15 regular poops are worth the first 90%, Buba's final drop is the last 10%
+  function progressPct() { return s.cleaned >= TOTAL ? 100 : Math.round(90 * s.regDumped / REG_TOTAL); }
 
   // ------------------------------------------------------------ Buba behaviour
   function startPanic() {
@@ -677,6 +767,8 @@
     if (!spots.length) spots = [s.cleanedSpots.slice().sort((a, b) => dist(b, pl) - dist(a, pl))[0]];
     s.dropSpot = spots[(Math.random() * spots.length) | 0];
     s.buba.panicT = 0; s.buba.dropped = false; s.buba.wp = null;
+    s.finalType = (Math.random() * TYPES.length) | 0;   // colour of the last poop
+    haptic([100, 50, 100]);
     Sound.setMode('panic'); Sound.bark();
     say('Buba is panicking! Watch the clean spots...', 3);
   }
@@ -692,11 +784,11 @@
   function dropFinal() {
     const b = s.buba;
     b.dropped = true; b.wp = null;
-    addPoop(s.dropSpot.x, s.dropSpot.z, true);
+    addPoop(s.dropSpot.x, s.dropSpot.z, true, s.finalType);
     burst(s.dropSpot.x, 0.4, s.dropSpot.z, [0xffd66b, 0xffffff, 0xff9ec7], 26, 3, 1.1, 0.08);
     s.shake = 0.35;
     Sound.pop(); Sound.bark();
-    say('Buba dropped the last one! Follow the golden beam, scoop it and bin it!', 5);
+    say('Buba dropped the last one: a ' + TYPES[s.finalType].name + ' one! Follow the golden beam, scoop it and bin it!', 5);
   }
 
   function updateBuba(dt) {
@@ -813,9 +905,10 @@
       if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1;
       if (keys.has('KeyQ')) pl.yaw += 1.9 * dt;
       if (keys.has('KeyE')) pl.yaw -= 1.9 * dt;
+      ix += touch.move.x; iz += touch.move.z;           // virtual joystick (analog)
       const len = Math.hypot(ix, iz);
       if (len > 0) {
-        ix /= len; iz /= len;
+        if (len > 1) { ix /= len; iz /= len; }
         const fx = -Math.sin(pl.yaw), fz = -Math.cos(pl.yaw), rx = Math.cos(pl.yaw), rz = -Math.sin(pl.yaw);
         const sp = pl.speed * (s.carry ? CARRY_SLOW : 1);
         pl.x += (fx * iz + rx * ix) * sp * dt;
@@ -862,13 +955,14 @@
       }
     }
 
-    if (binMarker) {
-      const on = !!s.carry && s.mode === 'playing';
-      binMarker.group.visible = on;
+    for (const b of BINS) {
+      if (!b.marker) continue;
+      const on = !!s.carry && s.carry.type === b.type && s.mode === 'playing';
+      b.marker.group.visible = on;
       if (on) {
         const w = Math.sin(s.t * 5) * 0.07;
-        binMarker.spr.position.y = 1.95 + w; binMarker.cone.position.y = 1.5 + w;
-        binMarker.ring.scale.setScalar(1 + 0.08 * Math.sin(s.t * 6));
+        b.marker.spr.position.y = 2.25 + w; b.marker.cone.position.y = 1.7 + w;
+        b.marker.ring.scale.setScalar(1 + 0.08 * Math.sin(s.t * 6));
       }
     }
 
@@ -904,12 +998,16 @@
     mctx.fillStyle = '#d2ac78';
     for (const b of BOXES) mctx.fillRect(X(b.x1), Z(b.z1), (b.x2 - b.x1) * MS, (b.z2 - b.z1) * MS);
     for (const p of s.poops) {
-      mctx.fillStyle = p.glow ? '#ffb000' : '#7a4a1f';
+      mctx.fillStyle = TYPES[p.type].dot;
       mctx.beginPath(); mctx.arc(X(p.x), Z(p.z), p.glow ? 5 + Math.sin(s.t * 10) * 1.5 : 3.5, 0, 6.3); mctx.fill();
+      if (p.glow) { mctx.strokeStyle = '#ffb000'; mctx.lineWidth = 2; mctx.stroke(); }
     }
-    // bin
-    mctx.fillStyle = (s.carry && Math.sin(s.t * 10) > 0) ? '#4fe08a' : '#2f8f5b';
-    mctx.fillRect(X(BIN.x) - 5, Z(BIN.z) - 5, 10, 10);
+    // bins (the matching one blinks while you carry that colour)
+    for (const bn of BINS) {
+      const blink = s.carry && s.carry.type === bn.type && Math.sin(s.t * 10) > 0;
+      mctx.fillStyle = TYPES[bn.type].css; mctx.fillRect(X(bn.x) - 5, Z(bn.z) - 5, 10, 10);
+      mctx.strokeStyle = blink ? '#ffffff' : '#5b4a7e'; mctx.lineWidth = blink ? 3 : 1.5; mctx.strokeRect(X(bn.x) - 5, Z(bn.z) - 5, 10, 10);
+    }
     const b = s.buba;
     mctx.fillStyle = '#f2a21b'; mctx.beginPath(); mctx.arc(X(b.x), Z(b.z), 4.5, 0, 6.3); mctx.fill();
     mctx.strokeStyle = '#8a5a00'; mctx.lineWidth = 1.5; mctx.stroke();
@@ -918,17 +1016,28 @@
     mctx.fillStyle = '#4f7fe0'; mctx.beginPath(); mctx.moveTo(0, -7); mctx.lineTo(5, 5); mctx.lineTo(-5, 5); mctx.closePath(); mctx.fill();
     mctx.restore();
   }
-  let lastPct = -1, lastPrompt = null;
+  let lastPct = -1, lastPrompt = null, lastMode = '', lastReady = null, lastLabel = '', lastMute = '';
   function hud() {
-    const pct = Math.round(s.cleaned / TOTAL * 100);
+    const pct = progressPct();
     if (pct !== lastPct) { lastPct = pct; $('pct').textContent = pct + '%'; $('fill').style.width = pct + '%'; $('count').textContent = 'Cleaned ' + s.cleaned + ' / ' + TOTAL; }
-    let txt = '';
+    if (s.mode !== lastMode) { lastMode = s.mode; document.body.dataset.mode = s.mode; }
+    const K = isTouch() ? '' : 'SPACE · ';
+    let txt = '', ready = false;
     if (s.mode === 'playing') {
-      if (s.carry) txt = nearBin() ? 'SPACE · dump in bin' : 'Carrying it · find the green bin';
-      else if (s.target) txt = 'SPACE · scoop';
+      if (s.carry) {
+        const T = TYPES[s.carry.type], br = binInReach();
+        if (br && br.type === s.carry.type) { txt = K + 'dump in the ' + T.name + ' bin'; ready = true; }
+        else if (br) txt = 'Wrong bin · find the ' + T.name + ' one';
+        else txt = 'Carrying ' + T.name + ' · find the ' + T.name + ' bin';
+      } else if (s.target) { txt = K + 'scoop'; ready = true; }
     }
     if (txt !== lastPrompt) { lastPrompt = txt; const el = $('prompt'); el.textContent = txt; el.classList.toggle('on', !!txt); }
+    const label = s.carry ? 'DUMP' : 'SCOOP';
+    if (label !== lastLabel) { lastLabel = label; $('actBtn').textContent = label; }
+    if (ready !== lastReady) { lastReady = ready; $('actBtn').classList.toggle('ready', ready); }
     $('snd').textContent = Sound.isMuted() ? 'Sound: off (M)' : 'Sound: on (M)';
+    const mu = Sound.isMuted() ? '🔇' : '🔊';
+    if (mu !== lastMute) { lastMute = mu; $('muteBtn').textContent = mu; }
   }
 
   // ------------------------------------------------------------ input and flow
@@ -946,22 +1055,22 @@
     const first = s.mode === 'title';
     s.mode = 'playing';
     Sound.setMode(s.phase === 2 ? 'panic' : 'calm');
-    if (first) say('Scoop poops with SPACE and dump them in the green bin!', 4);
+    if (first) say(introMsg(), 4);
     lock();
   }
   $('startBtn').addEventListener('click', beginPlay);
   $('restart').addEventListener('click', () => { $('restart').blur(); keys.clear(); Sound.init(); reset('playing'); lock(); });
 
+  function pauseGame() {
+    if (s.mode !== 'playing') return;
+    s.mode = 'paused'; keys.clear(); resetTouch(); Sound.setMode('off');
+    showOverlay('Paused', 'Mr. Custódio is catching his breath', 'Buba is waiting. Do not trust that face.', isTouch() ? 'Tap to resume' : 'Click to resume');
+  }
   document.addEventListener('pointerlockchange', () => {
     if (document.pointerLockElement === canvas) { lockActive = true; return; }
-    if (lockActive) {
-      lockActive = false;
-      if (s.mode === 'playing') {
-        s.mode = 'paused'; keys.clear(); Sound.setMode('off');
-        showOverlay('Paused', 'Mr. Custódio is catching his breath', 'Buba is waiting. Do not trust that face.', 'Click to resume');
-      }
-    }
+    if (lockActive) { lockActive = false; pauseGame(); }
   });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
   window.addEventListener('mousemove', e => {
     if (s.mode !== 'playing') return;
     if (lockActive || (e.buttons & 1)) {
@@ -981,9 +1090,64 @@
   window.addEventListener('keyup', e => keys.delete(e.code));
   window.addEventListener('blur', () => keys.clear());
 
+  // ------------------------------------------------------------ touch controls (phones and tablets)
+  // left half of the screen: floating joystick, right half: drag to look, yellow button: scoop / dump
+  const pad = $('touchPad'), joy = $('joy'), knob = $('joyKnob'), actBtn = $('actBtn'), JOY_R = 52;
+  function resetTouch() {
+    touch.joyId = null; touch.lookId = null; touch.move.x = 0; touch.move.z = 0; joy.style.display = 'none';
+  }
+  function enableTouchUI() {
+    document.body.classList.add('touch');
+    if (s && s.mode === 'title') $('startBtn').textContent = 'Tap to start';
+  }
+  if (COARSE) enableTouchUI();
+  window.addEventListener('touchstart', enableTouchUI, { once: true, passive: true });
+
+  pad.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') return;
+    e.preventDefault();
+    try { pad.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (e.clientX < window.innerWidth * 0.5 && touch.joyId === null) {
+      touch.joyId = e.pointerId; touch.ox = e.clientX; touch.oy = e.clientY;
+      joy.style.left = e.clientX + 'px'; joy.style.top = e.clientY + 'px'; joy.style.display = 'block';
+      knob.style.transform = 'translate(0px, 0px)';
+    } else if (touch.lookId === null) {
+      touch.lookId = e.pointerId; touch.lx = e.clientX; touch.ly = e.clientY;
+    }
+  });
+  pad.addEventListener('pointermove', e => {
+    if (e.pointerId === touch.joyId) {
+      let dx = e.clientX - touch.ox, dy = e.clientY - touch.oy;
+      const d = Math.hypot(dx, dy);
+      if (d > JOY_R) { dx = dx / d * JOY_R; dy = dy / d * JOY_R; }
+      knob.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+      let mx = dx / JOY_R, mz = -dy / JOY_R;
+      if (Math.hypot(mx, mz) < 0.18) { mx = 0; mz = 0; }       // dead zone
+      touch.move.x = mx; touch.move.z = mz;
+    } else if (e.pointerId === touch.lookId && s.mode === 'playing') {
+      s.player.yaw -= (e.clientX - touch.lx) * TOUCH_SENS;
+      s.player.pitch = clamp(s.player.pitch - (e.clientY - touch.ly) * TOUCH_SENS, -1.4, 1.4);
+      touch.lx = e.clientX; touch.ly = e.clientY;
+    }
+  });
+  const endTouch = e => {
+    if (e.pointerId === touch.joyId) { touch.joyId = null; touch.move.x = 0; touch.move.z = 0; joy.style.display = 'none'; }
+    if (e.pointerId === touch.lookId) touch.lookId = null;
+  };
+  pad.addEventListener('pointerup', endTouch);
+  pad.addEventListener('pointercancel', endTouch);
+  pad.addEventListener('lostpointercapture', endTouch);
+
+  actBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (s.mode === 'playing') s.actionBuf = 0.25; actBtn.classList.add('down'); });
+  const upBtn = () => actBtn.classList.remove('down');
+  actBtn.addEventListener('pointerup', upBtn); actBtn.addEventListener('pointercancel', upBtn); actBtn.addEventListener('pointerleave', upBtn);
+  $('pauseBtn').addEventListener('click', pauseGame);
+  $('muteBtn').addEventListener('click', () => { Sound.init(); Sound.toggleMute(); });
+
   // ------------------------------------------------------------ main loop
   buildRoom();
   reset('title');
+  if (isTouch()) $('startBtn').textContent = 'Tap to start';
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -994,7 +1158,7 @@
   requestAnimationFrame(frame);
 
   // small hook so the game can be tested from outside
-  window.__tidy = { get s() { return s; }, update, syncCamera, findTarget, nearBin, BIN, keys, render: () => renderer.render(scene, camera), begin: beginPlay };
+  window.__tidy = { get s() { return s; }, update, syncCamera, findTarget, binInReach, BINS, TYPES, progressPct, touch, keys, render: () => renderer.render(scene, camera), begin: beginPlay };
 })();
 </script>
 </body>
