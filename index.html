@@ -45,6 +45,14 @@
   #mini.off { display: none; }
   #help { left: 16px; bottom: 14px; color: #fff; font-size: 12.5px; text-shadow: 0 1px 3px rgba(0,0,0,.6); line-height: 1.6; }
 
+  #flash { inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(200,255,60,.12) 30%, rgba(160,255,40,.7) 100%); }
+  #tools { left: 50%; bottom: 16px; transform: translateX(-50%); display: none; gap: 8px; z-index: 6; }
+  body[data-mode="playing"] #tools { display: flex; }
+  .chip { pointer-events: auto; cursor: pointer; background: rgba(255,255,255,.82); color: var(--ink); border: 3px solid transparent; border-radius: 14px; padding: 5px 12px; font-weight: bold; font-size: 14px; white-space: nowrap; touch-action: none; }
+  .chip.on { border-color: #ffd66b; background: #fff; box-shadow: 0 0 0 3px rgba(255,214,107,.5); }
+  .chip.dis { opacity: .45; }
+  body.touch #tools { left: calc(12px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom)); transform: none; flex-direction: column; }
+  body.touch .chip { padding: 8px 12px; }
   .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; background: rgba(70,50,110,.7); padding: 20px; box-sizing: border-box; }
   .screen.show { display: flex; }
   .screen h1 { font-size: clamp(26px, 5vw, 50px); margin: 0 0 8px; text-shadow: 0 3px 0 rgba(0,0,0,.3); line-height: 1.15; }
@@ -102,6 +110,7 @@
 <canvas id="gl"></canvas>
 
 <div id="vig" class="hud"></div>
+<div id="flash" class="hud"></div>
 <div id="top" class="hud">
   <div class="l"><b>Operation Tidy-Up</b><br><span>Level 1 · The Living Room</span></div>
   <div id="center"><div id="pct">0%</div><div id="bar"><div id="fill"></div></div></div>
@@ -112,7 +121,9 @@
 <div id="msg" class="hud"></div>
 <div id="banner" class="hud">BUBA PANICS!</div>
 <canvas id="mini" class="hud" width="180" height="130"></canvas>
-<div id="help" class="hud">WASD / Arrows: move &nbsp;·&nbsp; Mouse: look &nbsp;·&nbsp; Q / E: turn &nbsp;·&nbsp; Space: scoop / dump<br>M: mute &nbsp;·&nbsp; N: minimap &nbsp;·&nbsp; Esc: pause</div>
+<div id="help" class="hud">WASD / Arrows: move &nbsp;·&nbsp; Mouse: look &nbsp;·&nbsp; Q / E: turn &nbsp;·&nbsp; Space: scoop / dump (hold to scrub)<br>1 / 2: shovel / mop &nbsp;·&nbsp; M: mute &nbsp;·&nbsp; N: minimap &nbsp;·&nbsp; Esc: pause</div>
+
+<div id="tools" class="hud"><div id="tool1" class="chip on">1 · Shovel</div><div id="tool2" class="chip">2 · Mop</div></div>
 
 <div id="touchPad"></div>
 <div id="joy"><div id="joyKnob"></div></div>
@@ -124,9 +135,10 @@
   <h1 id="ovTitle">Operation Tidy-Up</h1>
   <h2 id="ovSub">Mission Poop-astrophe</h2>
   <p id="ovText">Level 1: The Living Room. Mr. Custódio must clean up every one of Buba's surprises before the mother-in-law arrives.</p>
-  <p>Buba makes three colours of mess. Scoop each one up, carry it to the bin of the <b>same colour</b> and dump it. You walk slower while carrying.</p>
-  <p class="deskOnly">Move: WASD / arrows &nbsp;·&nbsp; Look: mouse &nbsp;·&nbsp; Scoop / dump: <b>Space</b></p>
-  <p id="touchHelp">Left thumb: move &nbsp;·&nbsp; Right thumb: look around &nbsp;·&nbsp; Yellow button: scoop / dump.<br>Tip: it plays best in landscape.</p>
+  <p>Buba makes three colours of mess. Scoop each one up, carry it to the bin of the <b>same colour</b> and dump it. Some hide under rugs and the coffee table.</p>
+  <p>Beware: <b>puddles</b> grow until you mop them, <b>radioactive</b> poop pulses (hazard bin!), and slippery dirt makes you slide and drop what you carry.</p>
+  <p class="deskOnly">Move: WASD / arrows &nbsp;·&nbsp; Look: mouse &nbsp;·&nbsp; Scoop / dump: <b>Space</b> &nbsp;·&nbsp; Tools: <b>1</b> shovel, <b>2</b> mop (hold Space to scrub)</p>
+  <p id="touchHelp">Left thumb: move &nbsp;·&nbsp; Right thumb: look around &nbsp;·&nbsp; Yellow button: scoop / dump (hold to scrub). Tap the SHOVEL / MOP chips to swap tools.<br>Tip: it plays best in landscape.</p>
   <button id="startBtn">Click to start</button>
 </div>
 
@@ -149,11 +161,17 @@
   const TYPES = [
     { name: 'brown', body: [0x8b5a2e, 0x9a6732, 0xa9753d], bin: 0xb0824f, css: '#b0824f', dot: '#7a4a1f', x: 3.4, z: 5.6 },
     { name: 'green', body: [0x4f9f3a, 0x62b348, 0x7ccb5c], bin: 0x3fae6a, css: '#3fae6a', dot: '#3fa33a', x: -6.8, z: 5.5 },
-    { name: 'pink', body: [0xdc5f93, 0xe879a8, 0xf293bb], bin: 0xf07fae, css: '#f07fae', dot: '#e0609a', x: 7.5, z: -5.3 }
+    { name: 'pink', body: [0xdc5f93, 0xe879a8, 0xf293bb], bin: 0xf07fae, css: '#f07fae', dot: '#e0609a', x: 7.5, z: -5.3 },
+    // special: pulses radiation, only fits the hazard bin, never used for Buba's final drop
+    { name: 'radioactive', label: 'HAZARD', body: [0xc8ff2e, 0xdcff5a, 0xeeff8e], bin: 0xd6f21e, css: '#a8c800', dot: '#b4ff00', x: -8.3, z: -2.6 }
   ];
-  const PER_COLOR = 5;                                   // poops of each colour scattered at the start
-  const REG_TOTAL = TYPES.length * PER_COLOR;            // 15 regular poops = the first 90%
+  const RAD = 3, NORMAL_TYPES = 3;
+  const PER_COLOR = 5;                                   // poops of each normal colour scattered at the start
+  const REG_TOTAL = NORMAL_TYPES * PER_COLOR + 2;        // 15 poops (2 of them hidden) + 1 radioactive + 1 puddle = the first 90%
   const TOTAL = REG_TOTAL + 1;                           // + the one Buba drops at 90% = 100%
+  const ANTI_SLIP = false;                               // future upgrade: non-slip slippers make Custódio immune to slipping
+  const PULSE_T = 3.6, PULSE_LIFE = 1.2, PULSE_R = 2.9;  // radioactive pulse: every 3.6 s a ring expands to 2.9 units
+  const TABLE = { x: 0, z: -2.6 };
   const BINS = TYPES.map((tp, i) => ({ type: i, x: tp.x, z: tp.z, marker: null }));
   const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   const TOUCH_SENS = 0.0055;
@@ -254,6 +272,11 @@
       pop: safe(() => blip(180, 520, ac.currentTime, 0.15, 'square', 0.12)),
       scoop: safe(() => { const t = ac.currentTime; noise(t, 0.12, 0.2, 900, 'lowpass'); blip(200, 420, t, 0.1, 'sine', 0.15); }),
       buzz: safe(() => { const t = ac.currentTime; blip(170, 110, t, 0.22, 'sawtooth', 0.14); blip(160, 100, t + 0.12, 0.22, 'sawtooth', 0.14); }),
+      slip: safe(() => { const t = ac.currentTime; blip(760, 160, t, 0.55, 'sine', 0.2); noise(t, 0.3, 0.1, 2500, 'highpass'); }),
+      thud: safe(() => { const t = ac.currentTime; blip(130, 45, t, 0.22, 'sine', 0.4); noise(t, 0.1, 0.18, 400, 'lowpass'); }),
+      zap: safe(() => { const t = ac.currentTime; blip(950, 90, t, 0.32, 'sawtooth', 0.15); noise(t, 0.25, 0.14, 4000, 'highpass'); }),
+      scrub: safe(() => noise(ac.currentTime, 0.14, 0.13, 1800, 'bandpass')),
+      ding: safe(() => { const t = ac.currentTime; tone(88, t, 0.3, 'triangle', 0.18); tone(95, t + 0.1, 0.4, 'triangle', 0.18); }),
       win: safe(() => { const t = ac.currentTime; [60, 64, 67, 72, 76, 79, 84].forEach((n, i) => tone(n, t + i * 0.09, 0.4, 'triangle', 0.2)); })
     };
   })();
@@ -297,6 +320,7 @@
 
   // solid furniture as axis-aligned boxes for collision
   const BOXES = [];
+  let tableTop = null;
   function solid(x1, z1, x2, z2) { BOXES.push({ x1, z1, x2, z2 }); }
 
   // framed portrait of Mr. Custódio, drawn on a canvas so no image file is needed
@@ -388,7 +412,7 @@
     rim.rotation.x = Math.PI / 2; rim.position.y = 0.86; g.add(rim);
     const bag = sph(0.3, col.clone().multiplyScalar(0.6).getHex(), 0, 0.92, 0, g, 12); bag.scale.set(1, 0.55, 1);
     solid(b.x - 0.45, b.z - 0.45, b.x + 0.45, b.z + 0.45);
-    const label = canvasSprite(T.name.toUpperCase(), T.css, 1.1, 0.41); label.position.set(0, 1.35, 0); g.add(label);
+    const label = canvasSprite((T.label || T.name).toUpperCase(), T.css, 1.1, 0.41); label.position.set(0, 1.35, 0); g.add(label);
 
     const m = new THREE.Group(); m.position.set(b.x, 0, b.z); m.visible = false; scene.add(m);
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.75, 0.92, 36), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
@@ -466,7 +490,8 @@
     solid(-2.2, -0.2, 2.2, 1.25);
 
     // coffee table
-    box(2.4, 0.1, 1.1, 0xe6c9a0, 0, 0.48, -2.6);
+    tableTop = box(2.4, 0.1, 1.1, 0xe6c9a0, 0, 0.48, -2.6);
+    tableTop.material = new THREE.MeshLambertMaterial({ color: 0xe6c9a0, transparent: true, opacity: 1 });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(0.1, 0.43, 0.1, 0xd2ac78, sx * 1.05, 0.215, -2.6 + sz * 0.45);
     box(0.4, 0.18, 0.3, 0xffd66b, 0.6, 0.62, -2.5);   // snack bowl
     solid(-1.2, -3.15, 1.2, -2.05);
@@ -524,6 +549,14 @@
   shovel.scale.setScalar(0.55);
   shovel.position.set(0.36, -0.3, -0.62);
   camera.add(shovel);
+
+  const mop = new THREE.Group();
+  fp(cyl(0.025, 0.025, 0.95, 0xb98b52, 0, 0, 0, mop, 8));
+  fp(box(0.34, 0.07, 0.14, 0x8892a0, 0, -0.5, 0, mop));
+  for (let i = -3; i <= 3; i++) fp(box(0.04, 0.2, 0.1, i % 2 ? 0xe9f1fb : 0xc9dcf2, i * 0.05, -0.62, 0, mop));
+  fp(sph(0.06, 0xffd23f, 0, 0.3, 0, mop, 10)); fp(sph(0.06, 0xffd23f, 0, 0.0, 0, mop, 10));
+  mop.scale.setScalar(0.55); mop.visible = false;
+  camera.add(mop);
 
   // the poop riding on the blade while carrying (no depth test so it always draws over the blade)
   const carried = new THREE.Group();
@@ -616,6 +649,10 @@
       const halo = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.55, 24), new THREE.MeshBasicMaterial({ color: 0xffd66b, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
       halo.rotation.x = -Math.PI / 2; halo.position.y = 0.03; g.add(halo); g.userData.halo = halo;
     }
+    if (type === RAD) {
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 12), new THREE.MeshBasicMaterial({ color: 0xd6ff2e, transparent: true, opacity: 0.22, depthWrite: false }));
+      aura.position.y = 0.32; g.add(aura); g.userData.aura = aura;
+    }
     return g;
   }
 
@@ -643,20 +680,22 @@
   // ------------------------------------------------------------ state
   let s = null, lockActive = false;
   const keys = new Set();
-  const touch = { move: { x: 0, z: 0 }, joyId: null, lookId: null, ox: 0, oy: 0, lx: 0, ly: 0 };
+  const touch = { move: { x: 0, z: 0 }, act: false, joyId: null, lookId: null, ox: 0, oy: 0, lx: 0, ly: 0 };
 
   function reset(mode) {
-    if (s) { for (const p of s.poops) scene.remove(p.mesh); }
+    clearWorld();
     for (const p of particles) { scene.remove(p.m); p.m.material.dispose(); }
     particles = [];
     s = {
       mode: mode || 'playing', phase: 1, t: 0,
-      player: { x: 0, z: 4.6, yaw: 0, pitch: -0.15, speed: 3.6, swing: 0, cool: 0, bob: 0 },
+      player: { x: 0, z: 4.6, yaw: 0, pitch: -0.15, speed: 3.6, swing: 0, cool: 0, bob: 0, vx: 0, vz: 0, mx: 0, mz: 0, slipT: 0, slipImm: 0, slowT: 0 },
       buba: { x: 5.5, z: -3, ang: Math.PI, dir: Math.PI, wanderT: 0, pause: 0, wag: 0, panicT: 0, zig: 0, wp: null, dropped: false, step: 0, moving: false },
       poops: [], cleaned: 0, regDumped: 0, finalType: 0, cleanedSpots: [], dropSpot: null,
-      shake: 0, msgT: 0, target: null, carry: null, actionBuf: 0
+      shake: 0, msgT: 0, target: null, carry: null, actionBuf: 0,
+      puddles: [], tool: 'shovel', bumpCd: 0, flashT: 0, mopT: 0, scrubSnd: 0, scrubbing: false, lumpT: null, puddleT: null, peek: 1
     };
     spawnPoops();
+    if (tableTop) tableTop.material.opacity = 1;
     document.body.classList.remove('panic');
     $('victory').classList.remove('show'); $('confetti').style.display = 'none'; confettiOn = false;
     Sound.setMode(s.mode === 'playing' ? 'calm' : 'off');
@@ -666,25 +705,76 @@
   }
 
   function spawnPoops() {
-    // PER_COLOR of every colour, shuffled
+    // PER_COLOR of every normal colour, shuffled; 2 of them start hidden
     const kinds = [];
-    TYPES.forEach((tp, i) => { for (let k = 0; k < PER_COLOR; k++) kinds.push(i); });
+    for (let i = 0; i < NORMAL_TYPES; i++) for (let k = 0; k < PER_COLOR; k++) kinds.push(i);
     for (let i = kinds.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
+    const free = (x, z, gap) => !s.poops.some(o => Math.hypot(o.x - x, o.z - z) < gap)
+      && Math.hypot(x - s.player.x, z - s.player.z) >= 3.5 && Math.hypot(x - s.buba.x, z - s.buba.z) >= 2.2;
+    // one hiding under a rug (a squirming lump gives it away)
+    const green = Math.random() < 0.4;
+    for (let i = 0; i < 300; i++) {
+      let x, z;
+      if (green) { const a = rand(0, 6.283), r = rand(0, 1.2); x = 5.2 + Math.cos(a) * r; z = 3.6 + Math.sin(a) * r; }
+      else { x = rand(-3.2, 3.2); z = rand(-3.3, 0.9); }
+      if (inFurniture(x, z, 0.55) || !free(x, z, 1)) continue;
+      addPoop(x, z, false, kinds.pop(), { hidden: 'rug', rug: green ? 0xa8d9ba : 0xb9a8e0 }); break;
+    }
+    // one hiding under the coffee table (look down at it, or follow the stink)
+    for (let i = 0; i < 100; i++) {
+      const x = TABLE.x + rand(-0.75, 0.75), z = TABLE.z + rand(-0.2, 0.2);
+      if (!free(x, z, 1)) continue;
+      addPoop(x, z, false, kinds.pop(), { hidden: 'table' }); break;
+    }
     let tries = 0, gap = 2.3;
-    while (s.poops.length < REG_TOTAL && tries++ < 8000) {
+    while (kinds.length && tries++ < 8000) {
       if (tries % 1000 === 0) gap = Math.max(1.3, gap - 0.2);   // loosen the spacing if the room is crowded
       const x = rand(-7.8, 7.8), z = rand(-5.3, 5.3);
-      if (inFurniture(x, z, 0.9)) continue;
-      if (Math.hypot(x - s.player.x, z - s.player.z) < 3.5) continue;
-      if (Math.hypot(x - s.buba.x, z - s.buba.z) < 2.2) continue;
-      if (s.poops.some(o => Math.hypot(o.x - x, o.z - z) < gap)) continue;
-      addPoop(x, z, false, kinds[s.poops.length]);
+      if (inFurniture(x, z, 0.9) || !free(x, z, gap)) continue;
+      addPoop(x, z, false, kinds.pop());
+    }
+    // the radioactive one
+    for (let i = 0; i < 3000; i++) {
+      const x = rand(-7.5, 7.5), z = rand(-5.0, 5.0);
+      if (inFurniture(x, z, 1.1) || !free(x, z, Math.max(1.3, 2.6 - i / 400))) continue;
+      addPoop(x, z, false, RAD); break;
+    }
+    // the puddle
+    for (let i = 0; i < 3000; i++) {
+      const x = rand(-7.5, 7.5), z = rand(-5.0, 5.0);
+      if (inFurniture(x, z, Math.max(0.9, 1.4 - i / 1500)) || !free(x, z, Math.max(1.5, 2.4 - i / 400))) continue;
+      addPuddle(x, z); break;
     }
   }
-  function addPoop(x, z, glow, type) {
+  function addPoop(x, z, glow, type, opts) {
     const mesh = makePoopMesh(glow, type); mesh.position.set(x, 0, z); scene.add(mesh);
-    const p = { x, z, r: 0.26, seed: Math.random() * 10, mesh, glow, type };
+    const p = { x, z, r: 0.26, seed: Math.random() * 10, mesh, glow, type, hidden: null, lump: null, ring: null, pt: rand(0.5, 2.5), zapId: -1 };
+    if (opts && opts.hidden === 'rug') {
+      p.hidden = 'rug'; mesh.visible = false;
+      const lump = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), lam(opts.rug));
+      lump.scale.set(1, 0.32, 0.8); lump.position.set(x, 0.05, z); lump.rotation.y = rand(0, 3); scene.add(lump); p.lump = lump;
+    } else if (opts && opts.hidden === 'table') p.hidden = 'table';
+    if (type === RAD) {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.88, 1, 48), new THREE.MeshBasicMaterial({ color: 0xd6ff2e, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.06, z); ring.visible = false; scene.add(ring); p.ring = ring;
+    }
     s.poops.push(p); return p;
+  }
+  function addPuddle(x, z) {
+    const g = new THREE.Group(); g.position.set(x, 0.018, z);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xc9a23a, transparent: true, opacity: 0.88, depthWrite: false });
+    [[0, 0, 1], [0.55, 0.2, 0.62], [-0.5, 0.35, 0.58], [0.1, -0.6, 0.55]].forEach(([bx, bz, br]) => {
+      const m = new THREE.Mesh(new THREE.CircleGeometry(br, 28), mat); m.rotation.x = -Math.PI / 2; m.position.set(bx, 0, bz); g.add(m);
+    });
+    const sheen = new THREE.Mesh(new THREE.CircleGeometry(0.26, 20), new THREE.MeshBasicMaterial({ color: 0xf0dc8a, transparent: true, opacity: 0.7, depthWrite: false }));
+    sheen.rotation.x = -Math.PI / 2; sheen.position.set(-0.25, 0.003, -0.15); sheen.scale.set(1.7, 1, 1); g.add(sheen);
+    const q = { x, z, r: 0.6, max: 1.7, mesh: g, seed: Math.random() * 10 };
+    g.scale.setScalar(q.r); scene.add(g); s.puddles.push(q); return q;
+  }
+  function clearWorld() {
+    if (!s) return;
+    for (const p of s.poops) { scene.remove(p.mesh); if (p.lump) scene.remove(p.lump); if (p.ring) scene.remove(p.ring); }
+    for (const q of s.puddles) scene.remove(q.mesh);
   }
 
   function say(text, secs) { $('msg').textContent = text; $('msg').classList.add('on'); s.msgT = secs; }
@@ -694,6 +784,7 @@
     const pl = s.player, fx = -Math.sin(pl.yaw), fz = -Math.cos(pl.yaw);
     let best = null, bd = Infinity;
     for (const p of s.poops) {
+      if (p.hidden) continue;
       const dx = p.x - pl.x, dz = p.z - pl.z, d = Math.hypot(dx, dz);
       if (d > REACH) continue;
       const dot = (dx * fx + dz * fz) / (d || 1);
@@ -719,12 +810,16 @@
     const pl = s.player;
     pl.swing = 0.3; pl.cool = 0.38;
     Sound.swish();
-    if (s.carry) tryDump();
-    else { const t = findTarget(); if (t) pickUp(t); }
+    if (s.carry) { tryDump(); return; }
+    const t = findTarget();
+    if (t) { pickUp(t); return; }
+    const l = findLump();
+    if (l) { revealPoop(l, 'lift'); return; }
+    if (puddleInReach()) say('Yuck, a puddle! Switch to the mop (' + (isTouch() ? 'tap MOP' : 'press 2') + ').', 2.4);
   }
 
   function pickUp(p) {
-    scene.remove(p.mesh);
+    scene.remove(p.mesh); if (p.ring) scene.remove(p.ring);
     s.poops.splice(s.poops.indexOf(p), 1);
     s.cleanedSpots.push({ x: p.x, z: p.z });      // this floor spot is clean now (Buba may re-soil it later)
     s.carry = { type: p.type, glow: p.glow };
@@ -756,13 +851,105 @@
     burst(bin.x, 1.1, bin.z, T.body.concat([0xffe27a]), 22, 1.8, 0.9, 0.07);
     burst(bin.x, 1.2, bin.z, [0xffffff, 0xfff3a8, 0xbff0ff], 10, 1.4, 1.2, 0.05);
     s.shake = Math.max(s.shake, 0.15);
+    scored('Dumped!');
+  }
+  function scored(prefix) {
     if (s.cleaned >= TOTAL) { win(); return; }
     if (s.regDumped >= REG_TOTAL && s.phase === 1) startPanic();
-    else say('Dumped! ' + (REG_TOTAL - s.regDumped) + ' to go.', 2);
+    else say(prefix + ' ' + (REG_TOTAL - s.regDumped) + ' to go.', 2);
   }
 
   // progress: the 15 regular poops are worth the first 90%, Buba's final drop is the last 10%
   function progressPct() { return s.cleaned >= TOTAL ? 100 : Math.round(90 * s.regDumped / REG_TOTAL); }
+
+  // ------------------------------------------------------------ new mechanics: tools, hidden dirt, slipping, bumps
+  function isHeld() { return keys.has('Space') || touch.act; }
+
+  function setTool(t) {
+    if (s.mode !== 'playing' || s.tool === t) return;
+    if (t === 'mop' && s.carry) { say('Hands full! Dump what you are carrying first.', 2); return; }
+    s.tool = t; Sound.swish();
+    say(t === 'mop' ? 'Mop ready: hold ' + (isTouch() ? 'the button' : 'SPACE') + ' next to a puddle to scrub.' : 'Shovel ready.', 2);
+  }
+
+  function findLump() {
+    const pl = s.player, fx = -Math.sin(pl.yaw), fz = -Math.cos(pl.yaw);
+    let best = null, bd = Infinity;
+    for (const p of s.poops) {
+      if (p.hidden !== 'rug') continue;
+      const dx = p.x - pl.x, dz = p.z - pl.z, d = Math.hypot(dx, dz);
+      if (d > REACH) continue;
+      if (((dx * fx + dz * fz) / (d || 1) > 0.5 || d < 0.9) && d < bd) { bd = d; best = p; }
+    }
+    return best;
+  }
+  function puddleInReach() {
+    const pl = s.player, fx = -Math.sin(pl.yaw), fz = -Math.cos(pl.yaw);
+    let best = null, bd = Infinity;
+    for (const q of s.puddles) {
+      const dx = q.x - pl.x, dz = q.z - pl.z, d = Math.hypot(dx, dz), e = d - q.r;
+      if (e > 1.4) continue;
+      if (((dx * fx + dz * fz) / (d || 1) > 0.2 || e < 0.3) && e < bd) { bd = e; best = q; }
+    }
+    return best;
+  }
+  function revealPoop(p, how) {
+    p.hidden = null;
+    if (p.lump) { scene.remove(p.lump); p.lump = null; p.mesh.visible = true; }
+    burst(p.x, 0.3, p.z, TYPES[p.type].body.slice(0, 2).concat([0xffffff]), 14, 1.6, 0.7, 0.06);
+    Sound.pop(); haptic(20);
+    say(how === 'table' ? 'You spotted one hiding under the table!' : how === 'step' ? 'Something was hiding under the rug!' : 'Found one hiding under the rug!', 2.6);
+  }
+  function cleanPuddle(q) {
+    scene.remove(q.mesh); s.puddles.splice(s.puddles.indexOf(q), 1);
+    s.cleaned++; s.regDumped++;
+    burst(q.x, 0.2, q.z, [0xbfe6f7, 0xffffff, 0xc9a23a], 18, 1.6, 0.8, 0.06);
+    Sound.ding(); haptic(25); s.shake = Math.max(s.shake, 0.1);
+    scored('Squeaky clean!');
+  }
+
+  // knocks the carried poop loose: it lands on the floor ahead of the player (direction ax, az), keeping its colour
+  function dropCarried(ax, az) {
+    if (!s.carry) return;
+    const pl = s.player, c = s.carry; s.carry = null;
+    let x = pl.x + ax, z = pl.z + az;
+    const base = Math.atan2(ax, az);
+    for (let i = 0; i < 12; i++) {
+      const a = base + (i ? (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.5 : 0);
+      const tx = clamp(pl.x + Math.sin(a) * 0.95, -ROOM.x + 0.5, ROOM.x - 0.5), tz = clamp(pl.z + Math.cos(a) * 0.95, -ROOM.z + 0.5, ROOM.z - 0.5);
+      if (!inFurniture(tx, tz, 0.35)) { x = tx; z = tz; break; }
+    }
+    addPoop(x, z, c.glow, c.type);
+    burst(x, 0.3, z, TYPES[c.type].body, 10, 1.6, 0.6, 0.05);
+    Sound.thud();
+  }
+  function slip(kind) {
+    const pl = s.player;
+    pl.slipT = 1.0; pl.slipImm = 2.4;
+    let dx = pl.mx, dz = pl.mz, l = Math.hypot(dx, dz);
+    if (l < 0.1) { dx = -Math.sin(pl.yaw); dz = -Math.cos(pl.yaw); l = 1; }
+    dx /= l; dz /= l;
+    pl.vx = dx * 4.6; pl.vz = dz * 4.6; pl.mx = pl.mz = 0;
+    Sound.slip(); haptic([40, 30, 60]); s.shake = Math.max(s.shake, 0.25);
+    if (s.carry) { const T = TYPES[s.carry.type]; dropCarried(dx, dz); say('Whoa! You slipped and dropped the ' + T.name + ' one!', 3); }
+    else say(kind === 'squish' ? 'Squish! Slippery!' : 'Whoa! Slippery puddle!', 2.2);
+  }
+  function bump() {
+    const pl = s.player, b = s.buba;
+    let nx = pl.x - b.x, nz = pl.z - b.z; const l = Math.hypot(nx, nz) || 1; nx /= l; nz /= l;
+    s.bumpCd = 1.5;
+    pl.vx = nx * 7; pl.vz = nz * 7;
+    Sound.bark(); Sound.thud(); haptic([60, 40, 100]); s.shake = Math.max(s.shake, 0.35);
+    if (s.carry) { const T = TYPES[s.carry.type]; dropCarried(nx, nz); say('Buba crashed into you! You dropped the ' + T.name + ' one!', 3); }
+    else say('Oof! Buba bumped you!', 1.8);
+  }
+  function zap(p) {
+    const pl = s.player;
+    let nx = pl.x - p.x, nz = pl.z - p.z; const l = Math.hypot(nx, nz) || 1; nx /= l; nz /= l;
+    pl.vx += nx * 4.5; pl.vz += nz * 4.5; pl.slowT = 1.6; s.flashT = 0.5; s.shake = Math.max(s.shake, 0.2);
+    Sound.zap(); haptic([30, 30, 30]);
+    say('Bzzt! Radiation pulse! Time your approach between pulses.', 2.6);
+  }
 
   // ------------------------------------------------------------ Buba behaviour
   function startPanic() {
@@ -771,11 +958,11 @@
     const ban = $('banner'); ban.classList.remove('on'); void ban.offsetWidth; ban.classList.add('on');
     const pl = s.player;
     // pick an already-cleaned spot that is not right next to the player
-    let spots = s.cleanedSpots.filter(c => dist(c, pl) >= 4);
+    let spots = s.cleanedSpots.filter(c => dist(c, pl) >= 4 && !inFurniture(c.x, c.z, 0.1));
     if (!spots.length) spots = [s.cleanedSpots.slice().sort((a, b) => dist(b, pl) - dist(a, pl))[0]];
     s.dropSpot = spots[(Math.random() * spots.length) | 0];
     s.buba.panicT = 0; s.buba.dropped = false; s.buba.wp = null;
-    s.finalType = (Math.random() * TYPES.length) | 0;   // colour of the last poop
+    s.finalType = (Math.random() * NORMAL_TYPES) | 0;   // colour of the last poop
     haptic([100, 50, 100]);
     Sound.setMode('panic'); Sound.bark();
     say('Buba is panicking! Watch the clean spots...', 3);
@@ -847,6 +1034,7 @@
       if (Math.hypot(b.x - ox, b.z - oz) > 1e-5) b.ang += angDiff(b.ang, targetAng) * Math.min(1, dt * (s.phase === 2 ? 14 : 5));
       b.step += dt * (s.phase === 2 ? 26 : 8);
     }
+    if (s.phase === 2 && s.mode === 'playing' && s.bumpCd <= 0 && dist(b, s.player) < BUBA_R + PLAYER_R + 0.12) bump();
     b.moving = moving;
   }
 
@@ -903,6 +1091,7 @@
     s.t += dt;
     if (s.msgT > 0) { s.msgT -= dt; if (s.msgT <= 0) $('msg').classList.remove('on'); }
     if (s.shake > 0) s.shake -= dt;
+    if (s.flashT > 0) s.flashT -= dt;
     updateParticles(dt);
 
     const pl = s.player;
@@ -916,38 +1105,91 @@
       if (keys.has('KeyE')) pl.yaw -= 1.9 * dt;
       ix += touch.move.x; iz += touch.move.z;           // virtual joystick (analog)
       const len = Math.hypot(ix, iz);
+      const sliding = pl.slipT > 0;
       if (len > 0) {
         if (len > 1) { ix /= len; iz /= len; }
         const fx = -Math.sin(pl.yaw), fz = -Math.cos(pl.yaw), rx = Math.cos(pl.yaw), rz = -Math.sin(pl.yaw);
-        const sp = pl.speed * (s.carry ? CARRY_SLOW : 1);
-        pl.x += (fx * iz + rx * ix) * sp * dt;
-        pl.z += (fz * iz + rz * ix) * sp * dt;
+        const sp = pl.speed * (s.carry ? CARRY_SLOW : 1) * (pl.slowT > 0 ? 0.5 : 1) * (sliding ? 0.25 : 1);
+        const mx = fx * iz + rx * ix, mz = fz * iz + rz * ix;
+        pl.x += mx * sp * dt; pl.z += mz * sp * dt;
+        pl.mx = mx; pl.mz = mz;
         pl.bob += dt * 9;
+      } else { pl.mx = 0; pl.mz = 0; }
+      // forced motion: knockback and slides
+      if (pl.vx || pl.vz) {
+        pl.x += pl.vx * dt; pl.z += pl.vz * dt;
+        const k = Math.exp(-(sliding ? 2.4 : 7) * dt); pl.vx *= k; pl.vz *= k;
+        if (Math.hypot(pl.vx, pl.vz) < 0.05) pl.vx = pl.vz = 0;
       }
+      if (pl.slipT > 0) pl.slipT -= dt;
+      if (pl.slipImm > 0) pl.slipImm -= dt;
+      if (pl.slowT > 0) pl.slowT -= dt;
+      if (s.bumpCd > 0) s.bumpCd -= dt;
+      for (const q of s.puddles) q.r = Math.min(q.max, q.r + 0.02 * dt);   // puddles keep spreading
       // circular collision body: walls, furniture and the (solid) poops
       pushOut(pl, PLAYER_R);
       for (let pass = 0; pass < 2; pass++) {
         for (const p of s.poops) {
+          if (p.hidden) continue;
           let dx = pl.x - p.x, dz = pl.z - p.z, d = Math.hypot(dx, dz);
           const min = PLAYER_R + p.r;
           if (d < min) { if (d < 1e-6) { dx = 1; dz = 0; d = 1; } pl.x = p.x + dx / d * min; pl.z = p.z + dz / d * min; }
         }
         pushOut(pl, PLAYER_R);
       }
+      // slippery dirt: puddles and the lump over a hidden poop
+      const held = isHeld(), mopping = s.tool === 'mop' && held;
+      if (!ANTI_SLIP && pl.slipT <= 0 && pl.slipImm <= 0 && !mopping) {
+        for (const q of s.puddles) if (dist(pl, q) < q.r * 0.9) { slip('puddle'); break; }
+      }
+      for (const p of s.poops) {
+        if (p.hidden === 'rug' && dist(pl, p) < 0.45) {
+          revealPoop(p, 'step');
+          if (!ANTI_SLIP && pl.slipT <= 0 && pl.slipImm <= 0) slip('squish');
+        }
+      }
+      // peeking under the coffee table: look steeply down at it and the top turns see-through
+      {
+        const tx = TABLE.x - pl.x, tz = TABLE.z - pl.z, td = Math.hypot(tx, tz);
+        const facing = (tx * -Math.sin(pl.yaw) + tz * -Math.cos(pl.yaw)) / (td || 1) > 0.3;
+        const peek = td < 3.6 && pl.pitch < -0.7 && facing;
+        s.peek += ((peek ? 0.2 : 1) - s.peek) * Math.min(1, dt * 10);
+        if (tableTop) tableTop.material.opacity = s.peek;
+        if (peek) for (const p of s.poops) {
+          if (p.hidden !== 'table') continue;
+          const dx = p.x - pl.x, dz = p.z - pl.z, d = Math.hypot(dx, dz);
+          if (d < 3.2 && (dx * -Math.sin(pl.yaw) + dz * -Math.cos(pl.yaw)) / (d || 1) > 0.5) revealPoop(p, 'table');
+        }
+      }
+      // scrubbing a puddle with the mop
+      s.scrubbing = false;
+      if (s.tool === 'mop' && held && !s.carry) {
+        const q = puddleInReach();
+        if (q) {
+          s.scrubbing = true; s.mopT += dt; s.scrubSnd -= dt;
+          q.r -= 0.5 * dt;
+          if (s.scrubSnd <= 0) { s.scrubSnd = 0.22; Sound.scrub(); burst(q.x + rand(-q.r, q.r) * 0.5, 0.1, q.z + rand(-q.r, q.r) * 0.5, [0xbfe6f7, 0xffffff], 3, 0.5, 0.5, 0.04); haptic(8); }
+          if (q.r <= 0.22) cleanPuddle(q);
+        }
+      }
       if (pl.cool > 0) pl.cool -= dt;
       if (pl.swing > 0) pl.swing -= dt;
       // Space is edge-triggered (buffered briefly), so holding it never scoops and dumps in one go
-      if (s.actionBuf > 0) { s.actionBuf -= dt; if (pl.cool <= 0) { s.actionBuf = 0; act(); } }
+      if (s.actionBuf > 0) { s.actionBuf -= dt; if (pl.cool <= 0) { s.actionBuf = 0; if (s.tool === 'shovel') act(); } }
       s.target = s.carry ? null : findTarget();
+      s.lumpT = s.carry ? null : findLump();
+      s.puddleT = s.carry ? null : puddleInReach();
     } else {
-      s.target = null;
+      s.target = null; s.lumpT = null; s.puddleT = null; s.scrubbing = false;
       if (pl.swing > 0) pl.swing -= dt;
     }
 
     // poop animation
     for (const p of s.poops) {
       const m = p.mesh;
+      if (p.lump) { const w = 1 + Math.sin(s.t * 5 + p.seed) * 0.08; p.lump.scale.set(w, 0.32 * (1 + Math.sin(s.t * 7 + p.seed) * 0.18), 0.8 / w); }
       m.rotation.y = Math.atan2(pl.x - p.x, pl.z - p.z);
+      if (m.userData.aura) m.userData.aura.scale.setScalar(1 + Math.sin(s.t * 6) * 0.12);
       const wob = 1 + Math.sin(s.t * 4 + p.seed) * 0.025;
       const hl = (p === s.target) ? 1.18 : 1;
       m.scale.set(hl / wob, hl * wob, hl / wob);
@@ -964,6 +1206,18 @@
       }
     }
 
+    for (const q of s.puddles) q.mesh.scale.setScalar(q.r * (1 + Math.sin(s.t * 2 + q.seed) * 0.015));
+    // radioactive pulses
+    for (const p of s.poops) {
+      if (p.type !== RAD || !p.ring) continue;
+      p.pt += dt;
+      const ph = (p.pt % PULSE_T) / PULSE_LIFE, id = Math.floor(p.pt / PULSE_T);
+      if (ph < 1) {
+        const r = 0.3 + ph * PULSE_R;
+        p.ring.visible = true; p.ring.scale.setScalar(r); p.ring.material.opacity = 0.85 * (1 - ph);
+        if (s.mode === 'playing' && p.zapId !== id && Math.abs(dist(pl, p) - r) < 0.35) { p.zapId = id; zap(p); }
+      } else p.ring.visible = false;
+    }
     for (const b of BINS) {
       if (!b.marker) continue;
       const on = !!s.carry && s.carry.type === b.type && s.mode === 'playing';
@@ -991,6 +1245,14 @@
     const base = s.carry ? 1.3 : 0.95;     // blade tips up to a flat "tray" while carrying
     shovel.rotation.set(base + sw * 0.9, 0, 0.12);
     shovel.position.set(0.36, (s.carry ? -0.3 : -0.28) + sw * 0.08 + bob * 0.5, -0.62 - sw * 0.25);
+    camera.rotation.z = pl.slipT > 0 ? Math.sin(s.t * 14) * 0.14 * clamp(pl.slipT / 0.4, 0, 1) : 0;
+    const mopOn = s.tool === 'mop';
+    shovel.visible = !mopOn; mop.visible = mopOn;
+    if (mopOn) {
+      const sc = s.scrubbing, w = Math.sin(s.mopT * 11);
+      mop.rotation.set(0.95 + (sc ? 0.15 : 0), 0, 0.12);
+      mop.position.set(0.3 + (sc ? w * 0.16 : 0), -0.3 + bob * 0.5, -0.66 - (sc ? Math.abs(w) * 0.08 : 0));
+    }
     carried.visible = !!s.carry;
     carried.rotation.set(-Math.PI / 2, 0, Math.sin(s.t * 6) * 0.07);
   }
@@ -1006,10 +1268,16 @@
     mctx.fillStyle = '#fbefd5'; mctx.fillRect(0, 0, w, h);
     mctx.fillStyle = '#d2ac78';
     for (const b of BOXES) mctx.fillRect(X(b.x1), Z(b.z1), (b.x2 - b.x1) * MS, (b.z2 - b.z1) * MS);
+    for (const q of s.puddles) { mctx.fillStyle = 'rgba(201,162,58,.7)'; mctx.beginPath(); mctx.arc(X(q.x), Z(q.z), Math.max(3, q.r * MS), 0, 6.3); mctx.fill(); }
     for (const p of s.poops) {
+      if (p.hidden) {
+        if (dist(p, s.player) < 5) { mctx.fillStyle = '#5b4a7e'; mctx.font = 'bold 13px sans-serif'; mctx.textAlign = 'center'; mctx.fillText('?', X(p.x), Z(p.z) + 4); }
+        continue;
+      }
       mctx.fillStyle = TYPES[p.type].dot;
       mctx.beginPath(); mctx.arc(X(p.x), Z(p.z), p.glow ? 5 + Math.sin(s.t * 10) * 1.5 : 3.5, 0, 6.3); mctx.fill();
       if (p.glow) { mctx.strokeStyle = '#ffb000'; mctx.lineWidth = 2; mctx.stroke(); }
+      if (p.type === RAD) { mctx.strokeStyle = '#5a7a00'; mctx.lineWidth = 1.5; mctx.beginPath(); mctx.arc(X(p.x), Z(p.z), 5 + 3 * Math.abs(Math.sin(s.t * 3)), 0, 6.3); mctx.stroke(); }
     }
     // bins (the matching one blinks while you carry that colour)
     for (const bn of BINS) {
@@ -1025,7 +1293,7 @@
     mctx.fillStyle = '#4f7fe0'; mctx.beginPath(); mctx.moveTo(0, -7); mctx.lineTo(5, 5); mctx.lineTo(-5, 5); mctx.closePath(); mctx.fill();
     mctx.restore();
   }
-  let lastPct = -1, lastPrompt = null, lastMode = '', lastReady = null, lastLabel = '', lastMute = '';
+  let lastPct = -1, lastPrompt = null, lastMode = '', lastReady = null, lastLabel = '', lastMute = '', lastFlash = '0';
   function hud() {
     const pct = progressPct();
     if (pct !== lastPct) { lastPct = pct; $('pct').textContent = pct + '%'; $('fill').style.width = pct + '%'; $('count').textContent = 'Cleaned ' + s.cleaned + ' / ' + TOTAL; }
@@ -1038,12 +1306,20 @@
         if (br && br.type === s.carry.type) { txt = K + 'dump in the ' + T.name + ' bin'; ready = true; }
         else if (br) txt = 'Wrong bin · find the ' + T.name + ' one';
         else txt = 'Carrying ' + T.name + ' · find the ' + T.name + ' bin';
+      } else if (s.tool === 'mop') {
+        if (s.puddleT) { txt = (isTouch() ? 'HOLD · scrub' : 'HOLD SPACE · scrub'); ready = true; }
+        else if (s.target) txt = 'The mop is for puddles · ' + (isTouch() ? 'tap SHOVEL' : 'press 1 for the shovel');
       } else if (s.target) { txt = K + 'scoop'; ready = true; }
+      else if (s.lumpT) { txt = K + 'lift the rug'; ready = true; }
+      else if (s.puddleT) txt = 'Puddle! ' + (isTouch() ? 'Tap MOP' : 'Press 2 for the mop');
     }
     if (txt !== lastPrompt) { lastPrompt = txt; const el = $('prompt'); el.textContent = txt; el.classList.toggle('on', !!txt); }
-    const label = s.carry ? 'DUMP' : 'SCOOP';
+    const label = s.carry ? 'DUMP' : (s.tool === 'mop' ? 'SCRUB' : 'SCOOP');
     if (label !== lastLabel) { lastLabel = label; $('actBtn').textContent = label; }
     if (ready !== lastReady) { lastReady = ready; $('actBtn').classList.toggle('ready', ready); }
+    $('tool1').classList.toggle('on', s.tool === 'shovel'); $('tool2').classList.toggle('on', s.tool === 'mop'); $('tool2').classList.toggle('dis', !!s.carry);
+    const fl = s.flashT > 0 ? Math.min(0.7, s.flashT * 2).toFixed(2) : '0';
+    if (fl !== lastFlash) { lastFlash = fl; $('flash').style.opacity = fl; }
     $('snd').textContent = Sound.isMuted() ? 'Sound: off (M)' : 'Sound: on (M)';
     const mu = Sound.isMuted() ? '🔇' : '🔊';
     if (mu !== lastMute) { lastMute = mu; $('muteBtn').textContent = mu; }
@@ -1091,6 +1367,11 @@
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
     Sound.init();
     if (e.code === 'Space' && !e.repeat && s.mode === 'playing') s.actionBuf = 0.25;
+    if (!e.repeat && s.mode === 'playing') {
+      if (e.code === 'Digit1') setTool('shovel');
+      else if (e.code === 'Digit2') setTool('mop');
+      else if (e.code === 'KeyF') setTool(s.tool === 'mop' ? 'shovel' : 'mop');
+    }
     if (e.code === 'KeyM' && !e.repeat) { Sound.toggleMute(); return; }
     if (e.code === 'KeyN' && !e.repeat) { mini.classList.toggle('off'); return; }
     if (s.mode === 'won' && $('victory').classList.contains('show') && (e.code === 'KeyR' || e.code === 'Enter')) { keys.clear(); reset('playing'); lock(); return; }
@@ -1103,7 +1384,7 @@
   // left half of the screen: floating joystick, right half: drag to look, yellow button: scoop / dump
   const pad = $('touchPad'), joy = $('joy'), knob = $('joyKnob'), actBtn = $('actBtn'), JOY_R = 52;
   function resetTouch() {
-    touch.joyId = null; touch.lookId = null; touch.move.x = 0; touch.move.z = 0; joy.style.display = 'none';
+    touch.joyId = null; touch.lookId = null; touch.act = false; touch.move.x = 0; touch.move.z = 0; joy.style.display = 'none';
   }
   function enableTouchUI() {
     document.body.classList.add('touch');
@@ -1153,12 +1434,16 @@
   pad.addEventListener('touchcancel', endTouch);
 
   // action button: touchstart for fingers (preventDefault also stops the ghost click), mousedown for a mouse on hybrid devices
-  const pressAct = e => { e.preventDefault(); if (s.mode === 'playing') s.actionBuf = 0.25; actBtn.classList.add('down'); };
-  const upBtn = () => actBtn.classList.remove('down');
+  const pressAct = e => { e.preventDefault(); if (s.mode === 'playing') s.actionBuf = 0.25; touch.act = true; actBtn.classList.add('down'); };
+  const upBtn = () => { touch.act = false; actBtn.classList.remove('down'); };
   actBtn.addEventListener('touchstart', pressAct, { passive: false });
   actBtn.addEventListener('mousedown', pressAct);
   actBtn.addEventListener('touchend', upBtn); actBtn.addEventListener('touchcancel', upBtn);
   actBtn.addEventListener('mouseup', upBtn); actBtn.addEventListener('mouseleave', upBtn);
+  ['tool1', 'tool2'].forEach((id, i) => {
+    const h = e => { e.preventDefault(); e.stopPropagation(); setTool(i ? 'mop' : 'shovel'); };
+    $(id).addEventListener('touchstart', h, { passive: false }); $(id).addEventListener('mousedown', h);
+  });
   $('pauseBtn').addEventListener('click', pauseGame);
   $('muteBtn').addEventListener('click', () => { Sound.init(); Sound.toggleMute(); });
 
@@ -1176,7 +1461,7 @@
   requestAnimationFrame(frame);
 
   // small hook so the game can be tested from outside
-  window.__tidy = { get s() { return s; }, update, syncCamera, findTarget, binInReach, BINS, TYPES, progressPct, touch, keys, render: () => renderer.render(scene, camera), begin: beginPlay };
+  window.__tidy = { get s() { return s; }, update, syncCamera, findTarget, binInReach, BINS, TYPES, progressPct, touch, keys, render: () => renderer.render(scene, camera), begin: beginPlay, setTool, findLump, puddleInReach, bump, slip, zap, dropCarried, revealPoop, RAD, NORMAL_TYPES, TABLE, get REG_TOTAL() { return REG_TOTAL; }, get TOTAL() { return TOTAL; } };
 })();
 </script>
 </body>
