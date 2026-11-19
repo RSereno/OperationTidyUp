@@ -75,9 +75,14 @@
   body.touch #touchHelp { display: block; }
   body.touch .deskOnly, body.touch #help, body.touch #snd { display: none; }
   body.touch #mini { right: auto; left: calc(10px + env(safe-area-inset-left)); top: 92px; bottom: auto; width: 120px; height: 87px; }
+  @media (orientation: portrait) {
+    body.touch #msg { top: 162px; }
+    #top #bar { width: 110px; }
+  }
   @media (max-width: 720px), (max-height: 520px) {
     #top { height: 58px; padding: 0 12px; }
-    #top .l { visibility: hidden; }
+    #top .l { visibility: hidden; min-width: 0; height: 0; overflow: hidden; }
+    #top .r { white-space: nowrap; }
     #top .r { min-width: 0; font-size: 12px; }
     #top .r b { font-size: 13px; }
     #pct { font-size: 30px; }
@@ -268,7 +273,10 @@
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
-    camera.aspect = w / h; camera.updateProjectionMatrix();
+    const asp = w / h;
+    // keep at least ~75 degrees of horizontal view: widen the vertical FOV on tall screens (capped at 100)
+    camera.fov = asp >= 1.78 ? 72 : Math.max(72, Math.min(100, 2 * Math.atan(Math.tan(75 * Math.PI / 360) / asp) * 180 / Math.PI));
+    camera.aspect = asp; camera.updateProjectionMatrix();
   }
   window.addEventListener('resize', resize); resize();
 
@@ -863,6 +871,7 @@
     document.body.classList.remove('panic');
     $('msg').classList.remove('on');
     if (document.exitPointerLock) document.exitPointerLock();
+    resetTouch();
     const token = s;
     setTimeout(() => {
       if (s !== token || s.mode !== 'won') return;
@@ -1021,7 +1030,7 @@
     const pct = progressPct();
     if (pct !== lastPct) { lastPct = pct; $('pct').textContent = pct + '%'; $('fill').style.width = pct + '%'; $('count').textContent = 'Cleaned ' + s.cleaned + ' / ' + TOTAL; }
     if (s.mode !== lastMode) { lastMode = s.mode; document.body.dataset.mode = s.mode; }
-    const K = isTouch() ? '' : 'SPACE · ';
+    const K = isTouch() ? 'TAP · ' : 'SPACE · ';
     let txt = '', ready = false;
     if (s.mode === 'playing') {
       if (s.carry) {
@@ -1103,44 +1112,53 @@
   if (COARSE) enableTouchUI();
   window.addEventListener('touchstart', enableTouchUI, { once: true, passive: true });
 
-  pad.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'mouse') return;
+  // Touch Events (not Pointer Events): the most widely supported way to read multi-touch on phones and tablets
+  pad.addEventListener('touchstart', e => {
     e.preventDefault();
-    try { pad.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    if (e.clientX < window.innerWidth * 0.5 && touch.joyId === null) {
-      touch.joyId = e.pointerId; touch.ox = e.clientX; touch.oy = e.clientY;
-      joy.style.left = e.clientX + 'px'; joy.style.top = e.clientY + 'px'; joy.style.display = 'block';
-      knob.style.transform = 'translate(0px, 0px)';
-    } else if (touch.lookId === null) {
-      touch.lookId = e.pointerId; touch.lx = e.clientX; touch.ly = e.clientY;
+    for (const tc of e.changedTouches) {
+      if (tc.clientX < window.innerWidth * 0.5 && touch.joyId === null) {
+        touch.joyId = tc.identifier; touch.ox = tc.clientX; touch.oy = tc.clientY;
+        joy.style.left = tc.clientX + 'px'; joy.style.top = tc.clientY + 'px'; joy.style.display = 'block';
+        knob.style.transform = 'translate(0px, 0px)';
+      } else if (touch.lookId === null) {
+        touch.lookId = tc.identifier; touch.lx = tc.clientX; touch.ly = tc.clientY;
+      }
     }
-  });
-  pad.addEventListener('pointermove', e => {
-    if (e.pointerId === touch.joyId) {
-      let dx = e.clientX - touch.ox, dy = e.clientY - touch.oy;
-      const d = Math.hypot(dx, dy);
-      if (d > JOY_R) { dx = dx / d * JOY_R; dy = dy / d * JOY_R; }
-      knob.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
-      let mx = dx / JOY_R, mz = -dy / JOY_R;
-      if (Math.hypot(mx, mz) < 0.18) { mx = 0; mz = 0; }       // dead zone
-      touch.move.x = mx; touch.move.z = mz;
-    } else if (e.pointerId === touch.lookId && s.mode === 'playing') {
-      s.player.yaw -= (e.clientX - touch.lx) * TOUCH_SENS;
-      s.player.pitch = clamp(s.player.pitch - (e.clientY - touch.ly) * TOUCH_SENS, -1.4, 1.4);
-      touch.lx = e.clientX; touch.ly = e.clientY;
+  }, { passive: false });
+  pad.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const tc of e.changedTouches) {
+      if (tc.identifier === touch.joyId) {
+        let dx = tc.clientX - touch.ox, dy = tc.clientY - touch.oy;
+        const d = Math.hypot(dx, dy);
+        if (d > JOY_R) { dx = dx / d * JOY_R; dy = dy / d * JOY_R; }
+        knob.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+        let mx = dx / JOY_R, mz = -dy / JOY_R;
+        if (Math.hypot(mx, mz) < 0.18) { mx = 0; mz = 0; }       // dead zone
+        touch.move.x = mx; touch.move.z = mz;
+      } else if (tc.identifier === touch.lookId && s.mode === 'playing') {
+        s.player.yaw -= (tc.clientX - touch.lx) * TOUCH_SENS;
+        s.player.pitch = clamp(s.player.pitch - (tc.clientY - touch.ly) * TOUCH_SENS, -1.4, 1.4);
+        touch.lx = tc.clientX; touch.ly = tc.clientY;
+      }
     }
-  });
+  }, { passive: false });
   const endTouch = e => {
-    if (e.pointerId === touch.joyId) { touch.joyId = null; touch.move.x = 0; touch.move.z = 0; joy.style.display = 'none'; }
-    if (e.pointerId === touch.lookId) touch.lookId = null;
+    for (const tc of e.changedTouches) {
+      if (tc.identifier === touch.joyId) { touch.joyId = null; touch.move.x = 0; touch.move.z = 0; joy.style.display = 'none'; }
+      if (tc.identifier === touch.lookId) touch.lookId = null;
+    }
   };
-  pad.addEventListener('pointerup', endTouch);
-  pad.addEventListener('pointercancel', endTouch);
-  pad.addEventListener('lostpointercapture', endTouch);
+  pad.addEventListener('touchend', endTouch);
+  pad.addEventListener('touchcancel', endTouch);
 
-  actBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (s.mode === 'playing') s.actionBuf = 0.25; actBtn.classList.add('down'); });
+  // action button: touchstart for fingers (preventDefault also stops the ghost click), mousedown for a mouse on hybrid devices
+  const pressAct = e => { e.preventDefault(); if (s.mode === 'playing') s.actionBuf = 0.25; actBtn.classList.add('down'); };
   const upBtn = () => actBtn.classList.remove('down');
-  actBtn.addEventListener('pointerup', upBtn); actBtn.addEventListener('pointercancel', upBtn); actBtn.addEventListener('pointerleave', upBtn);
+  actBtn.addEventListener('touchstart', pressAct, { passive: false });
+  actBtn.addEventListener('mousedown', pressAct);
+  actBtn.addEventListener('touchend', upBtn); actBtn.addEventListener('touchcancel', upBtn);
+  actBtn.addEventListener('mouseup', upBtn); actBtn.addEventListener('mouseleave', upBtn);
   $('pauseBtn').addEventListener('click', pauseGame);
   $('muteBtn').addEventListener('click', () => { Sound.init(); Sound.toggleMute(); });
 
