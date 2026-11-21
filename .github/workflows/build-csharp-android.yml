@@ -1,0 +1,32 @@
+name: Build Godot C# Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0' # Use '8.0' for Godot 4.3+, or '6.0' for Godot 4.0-4.2
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17' # Godot 4+ requires Java 17 for Android export tools
+
+      - name: Godot Android Export (.NET)
+        uses: dulvui/godot-android-export@v4
+        with:
+          godot-version: '4.3' # Must match your exact Godot version (e.g., 4.3, 4.4)
+          godot-channel: 'stable'
