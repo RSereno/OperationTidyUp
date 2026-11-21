@@ -1,0 +1,46 @@
+*.sln
+*.translation
+
+# =========================
+# Godot 4+ Specific Ignores
+# =========================
+/.godot/
+/import/
+export.cfg
+
+# =========================
+# C# / .NET Ignores
+# =========================
+# Visual Studio / Mono / .NET build artifacts
+.vs/
+.vscode/
+bin/
+obj/
+.mono/
+*.csproj.user
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+
+# =========================
+# Android Build & Export Ignores
+# =========================
+# Local Android build outputs, gradle caches, and generated APKs/AABs
+*.apk
+*.aab
+.gradle/
+build/
+local.properties
+
+# ⚠️ CRITICAL SECURITY WARNING: Never commit your release keystores!
+*.keystore
+*.jks
+
+# =========================
+# Operating System Files
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
