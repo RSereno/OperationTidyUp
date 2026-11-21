@@ -17,7 +17,7 @@ jobs:
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0' # Adjust if using Godot 4.0-4.2 (.NET 6)
+          dotnet-version: '8.0' # Use '8.0' for Godot 4.3+, or '6.0' for Godot 4.0-4.2
 
       - name: Set up Java JDK
         uses: actions/setup-java@v4
@@ -26,10 +26,10 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
-          # Use a modern command-line tools version to prevent the xml version 3/4 error
-          cmdline-tools-version: "11076708" 
+          # Only pull platform-tools and skip the removed legacy 'tools' package
+          packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
 
       - name: Godot Android Export (.NET)
         uses: dulvui/godot-android-export@v4
