@@ -32,6 +32,9 @@ obj/
 *.aab
 .gradle/
 build/
+!android/build/
+# Ignore precompiled Godot Android build libraries
+android/build/libs/
 local.properties
 
 # ⚠️ CRITICAL SECURITY WARNING: Never commit your release keystores!
