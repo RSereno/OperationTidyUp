@@ -43,17 +43,15 @@ jobs:
           mv Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64/GodotSharp /usr/local/bin/GodotSharp
           chmod +x /usr/local/bin/godot
 
-          # Create template directory and extract export templates
+          # Create template directory and download export templates
           TEMPLATE_DIR=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono
           mkdir -p "$TEMPLATE_DIR"
           wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz
           unzip -q Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz
           mv templates/* "$TEMPLATE_DIR/"
 
-          # 🚀 CRITICAL FIX: Dynamically inject the required Godot library binaries into the ignored libs folder
-          mkdir -p android/build/libs
-          cp "$TEMPLATE_DIR/godot-lib.template_debug.aar" android/build/libs/
-          cp "$TEMPLATE_DIR/godot-lib.template_release.aar" android/build/libs/
+          # 🚀 Automatically extract the Android build template & heavy .aar libraries on the fly!
+          unzip -q "$TEMPLATE_DIR/android_source.zip" -d .
 
       - name: Import Assets & Build C# Solution
         run: |
