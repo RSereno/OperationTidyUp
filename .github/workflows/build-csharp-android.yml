@@ -43,11 +43,13 @@ jobs:
           mv Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64/GodotSharp /usr/local/bin/GodotSharp
           chmod +x /usr/local/bin/godot
 
-          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono
+          # Create template directory and extract export templates so Godot can find them
+          TEMPLATE_DIR=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono
+          mkdir -p "$TEMPLATE_DIR"
           wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz
           unzip -q Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz
-          mv templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono/
-
+          mv templates/* "$TEMPLATE_DIR/"
+          
       - name: Import Assets & Build C# Solution
         run: |
           godot --headless --import --quit
