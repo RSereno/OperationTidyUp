@@ -32,6 +32,46 @@ jobs:
           mkdir -v -p ~/.local/share/godot/export_templates/
           mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono
 
+      # C# on Android requires the Gradle build template (normally installed
+      # from the editor's Project menu) and use_gradle_build=true in the preset.
+      - name: Install Android build template
+        run: |
+          command -v unzip >/dev/null || (apt-get update && apt-get install -y unzip)
+          cd "$PROJECT_PATH"
+          mkdir -p android/build
+          unzip -q -o ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono/android_source.zip -d android/build
+          echo "${GODOT_VERSION}.stable.mono" > android/.build_version
+          touch android/build/.gdignore
+          sed -i 's|gradle_build/use_gradle_build=false|gradle_build/use_gradle_build=true|' export_presets.cfg
+          grep -n "use_gradle_build" export_presets.cfg || true
+
+      # The container's HOME is /github/home, so the image's pre-made editor
+      # settings are not picked up. Write the Android settings explicitly.
+      - name: Configure Godot editor settings for Android
+        run: |
+          JAVA_HOME_DIR="$(dirname "$(dirname "$(readlink -f "$(which javac)")")")"
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
+          echo "JAVA: $JAVA_HOME_DIR"
+          echo "ANDROID SDK: $SDK_DIR"
+          ls "$SDK_DIR" || true
+          keytool -genkeypair -v -keystore /tmp/debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.7.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "$JAVA_HOME_DIR"
+          export/android/android_sdk_path = "$SDK_DIR"
+          export/android/debug_keystore = "/tmp/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          sed -i 's/^          //' ~/.config/godot/editor_settings-4.7.tres
+          cat ~/.config/godot/editor_settings-4.7.tres
+
       - name: Import resources
         run: |
           cd "$PROJECT_PATH"
