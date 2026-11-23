@@ -6,6 +6,7 @@ public static class Save
     const string Path = "user://save.cfg";
     public static int Unlocked = 1;        // highest level the player may start
     public static bool Minimap = true;
+    public static bool Muted = false;
     static bool loaded;
 
     public static void Load()
@@ -18,6 +19,7 @@ public static class Save
             if (cf.Load(Path) != Error.Ok) return;
             Unlocked = Mathf.Clamp(cf.GetValue("progress", "unlocked", 1).AsInt32(), 1, Cfg.MaxLevel);
             Minimap = cf.GetValue("settings", "minimap", true).AsBool();
+            Muted = cf.GetValue("settings", "muted", false).AsBool();
         }
         catch { }
     }
@@ -30,6 +32,7 @@ public static class Save
             cf.Load(Path);
             cf.SetValue("progress", "unlocked", Unlocked);
             cf.SetValue("settings", "minimap", Minimap);
+            cf.SetValue("settings", "muted", Muted);
             cf.Save(Path);
         }
         catch { }

@@ -1,6 +1,6 @@
 # Operation Tidy-Up: Mission Poop-astrophe (Godot 4.7.2 Mono / C#)
 
-Level 1 port of the HTML prototype. Everything is built in code (no art assets needed).
+Levels 1 (living room) and 2 (garden party) of the game. Level 2 adds the scraper (key 3) for dried mess, dirty bucket water, bigger puddles and an earlier, harder Buba panic with several exploding special drops. Pick the level on the title screen; finishing Level 1 offers 'Next level'. Everything is built in code (no art assets needed).
 
 ## Run
 1. Open Godot 4.7.2 **.NET/Mono** editor -> Import -> select `project.godot`.
@@ -42,3 +42,7 @@ Models load automatically from `res://art/`; anything missing falls back to the 
   in the Output panel ("Buba animations: ...").
 Models are auto-fitted to the room's footprints (collisions don't change). If one faces the wrong way, change its
 yaw constant at the top of `Scripts/Assets.cs` (add 180). Kenney's licence is CC0; keep the licence files if you like.
+
+
+## Menu
+The game opens on a main menu (Play, Levels, Settings, Quit) over a slow camera pan of the level. Progress (unlocked levels) and the minimap setting are saved in user://save.cfg; language is saved in user://settings.cfg. The pause screen has a 'Main menu' button.

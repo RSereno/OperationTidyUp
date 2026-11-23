@@ -25,7 +25,9 @@ public partial class Sfx : Node
 
     public override void _Ready()
     {
-        Muted = AudioServer.IsBusMute(0);
+        Save.Load();
+        Muted = Save.Muted;
+        AudioServer.SetBusMute(0, Muted);
         for (int i = 0; i < PoolSize; i++)
         {
             var p = new AudioStreamPlayer();
@@ -182,7 +184,7 @@ public partial class Sfx : Node
     public void Ding() { Fx("ding"); }
     public void Win() { Fx("win"); }
 
-    public void ToggleMute() { Muted = !Muted; AudioServer.SetBusMute(0, Muted); }
+    public void ToggleMute() { Muted = !Muted; AudioServer.SetBusMute(0, Muted); Save.Muted = Muted; Save.Store(); }
 
     public void SetMode(string m) { mode = m; step = 0; acc = 0.05; }   // "off", "calm" or "panic"
 
