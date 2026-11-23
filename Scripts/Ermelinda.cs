@@ -17,9 +17,10 @@ public partial class Ermelinda : Node3D
     public Vector2 NextStop { get { return Route[Mathf.Min(StopIdx, Route.Length - 1)]; } }
     public Vector2 P { get { return new Vector2(Position.X, Position.Z); } }
 
-    enum St { Away, Walk, Inspect, Done }
-    St st = St.Away;
-    float t, strikeCd, reactT, clock;
+    enum St { Away, Walk, Inspect, Wait, Done }
+    St st = St.Away, waitPrev = St.Walk;
+    public const float WaitT = 8f;          // how long she taps her foot before the next strike
+    float t, strikeCd, waitT, clock;
     Node3D armPivot, marker;
     MeshInstance3D markerRing;
     Label3D nameL, bang;
@@ -71,7 +72,7 @@ public partial class Ermelinda : Node3D
 
     public void ResetState()
     {
-        st = St.Away; Active = false; StopIdx = 0; t = 0f; strikeCd = 0f; reactT = 0f;
+        st = St.Away; Active = false; StopIdx = 0; t = 0f; strikeCd = 0f; waitT = 0f;
         Visible = false; marker.Visible = false; bang.Visible = false;
         Position = new Vector3(Door.X, 0f, Door.Y);
     }
@@ -89,10 +90,23 @@ public partial class Ermelinda : Node3D
         if (st == St.Done) { UpdateAnim(dt, false); return; }
 
         if (strikeCd > 0f) strikeCd -= dt;
-        if (reactT > 0f)
+        if (st == St.Wait)
         {
-            reactT -= dt;
-            bang.Visible = reactT > 0f;
+            // she stands there tapping her foot: clean the mess and she carries on; if not, another strike
+            waitT -= dt;
+            bang.Visible = true;
+            bang.Text = "! " + Mathf.CeilToInt(Mathf.Max(0f, waitT));
+            marker.Visible = true;
+            if (!g.MessNear(P, 1.7f))
+            {
+                st = waitPrev; strikeCd = 1.5f; bang.Visible = false;
+                g.BossRelief();
+            }
+            else if (waitT <= 0f)
+            {
+                waitT = WaitT;
+                g.BossStrike();
+            }
             UpdateAnim(dt, false);
             return;
         }
@@ -134,7 +148,7 @@ public partial class Ermelinda : Node3D
 
         if (strikeCd <= 0f && g.MessNear(P, radius))
         {
-            strikeCd = 3f; reactT = 1.4f; bang.Visible = true;
+            waitPrev = st; st = St.Wait; waitT = WaitT; bang.Visible = true;
             g.BossStrike();
         }
         UpdateAnim(dt, walking, inspecting);

@@ -4,7 +4,8 @@ using Godot;
 public partial class Buba : CharacterBody3D
 {
     public float Ang = Mathf.Pi, Dir = Mathf.Pi;
-    float wanderT, pause, wag, zig, stepT;
+    float wanderT, pause, wag, zig, stepT, stuckT, stuckResetT;
+    int stuckCount;
     public float PanicT, RedropT;
     public bool Dropped, Moving;
     bool hasWp;
@@ -182,9 +183,39 @@ public partial class Buba : CharacterBody3D
         // in the panic phase he crashes into the player and knocks the carried poop loose
         if (panic && g.CanBump() && P.DistanceTo(g.PP) < Cfg.BubaR + Cfg.PlayerR + 0.12f) g.Bump();
         bool bumped = GetSlideCollisionCount() > 0;
+        // anti-stuck: if he is trying to move but barely gets anywhere, turn away; if that keeps failing, hop to a free spot
+        if (moving)
+        {
+            float moved = new Vector2(Position.X - before.X, Position.Z - before.Z).Length();
+            float expect = new Vector2(vx, vz).Length() * dt;
+            if (moved < expect * 0.3f) stuckT += dt; else stuckT = Mathf.Max(0f, stuckT - dt * 2f);
+        }
+        else stuckT = 0f;
+        if (stuckResetT > 0f) { stuckResetT -= dt; if (stuckResetT <= 0f) stuckCount = 0; }
+        bool inside = Room.InFurniture(Position.X, Position.Z, 0.0f);
+        if (stuckT > 0.45f || inside)
+        {
+            stuckT = 0f; stuckCount++; stuckResetT = 5f;
+            if (inside || stuckCount >= 3)
+            {
+                stuckCount = 0;
+                Vector2 free = g.RandomWaypoint(P);
+                Position = new Vector3(free.X, 0f, free.Y);
+                hasWp = false; wanderT = 0f;
+            }
+            else
+            {
+                Dir = g.Rand(0f, Mathf.Tau); pause = 0f; wanderT = g.Rand(1f, 2f);
+                hasWp = false;
+            }
+        }
         if (bumped)
         {
-            if (!panic) Dir = Mathf.Atan2(-Position.X, -Position.Z) + g.Rand(-0.7f, 0.7f);
+            if (!panic)
+            {
+                Vector3 n = GetSlideCollision(0).GetNormal();
+                Dir = Mathf.Atan2(n.X, n.Z) + g.Rand(-0.8f, 0.8f);   // bounce away from whatever he hit
+            }
             else if (Dropped || PanicT < 1.7f) { wp = g.RandomWaypoint(P); hasWp = true; }
         }
         if (moving)
