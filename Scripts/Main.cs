@@ -61,6 +61,11 @@ public partial class Main : Node3D
     Node3D shovel, mop, scraper, spray, carried;
     public int Charges;
     bool twistDone;
+    // level 4 boss
+    public Ermelinda Boss;
+    public int Strikes, StopsDone;
+    public float GraceLeft;
+    float bossDropT, bossFailT;
     readonly MeshInstance3D[] carriedBody = new MeshInstance3D[3];
 
     class Particle { public MeshInstance3D M; public StandardMaterial3D Mat; public Vector3 V; public float Life, Max; }
@@ -94,6 +99,7 @@ public partial class Main : Node3D
         Room.Solid(this, tx - 0.65f, 5.5f, tx + 1.25f, 6.4f);     // sink + bucket footprint (collider + minimap + spawn avoidance)
         BuildPlayer();
         Dog = Buba.Create(); AddChild(Dog);
+        if (Cfg.Lvl.Boss) { Boss = Ermelinda.Create(); Boss.AttachTo(this); }
         Audio = new Sfx(); AddChild(Audio);
         Ui = new Hud(); AddChild(Ui);
         Ui.Init(this);
@@ -230,6 +236,7 @@ public partial class Main : Node3D
         if (TapObj != null) TapObj.Relabel();
         Room.RelabelPortrait();
         Garden.Relabel(); Kitchen.Relabel();
+        if (Boss != null) Boss.Relabel();
         Ui.Relabel();
     }
 
@@ -261,6 +268,9 @@ public partial class Main : Node3D
         DropsLeft = 0; dirtyWarned = false; Scraping = false; ScrapeP = 0f; CrustT = null;
         PanicAt = Mathf.Clamp(Mathf.RoundToInt(Cfg.RegTotal * Rand(Cfg.Lvl.PanicMin, Cfg.Lvl.PanicMax)), 1, Cfg.RegTotal);   // random moment, level 1: ~63%..90%
         Charges = Cfg.Lvl.Spray; twistDone = false;
+        Strikes = 0; StopsDone = 0; bossFailT = 0f; GraceLeft = Cfg.Lvl.BossGrace; bossDropT = Cfg.Lvl.BossGrace + Rand(2f, 4f);
+        if (Boss != null) Boss.ResetState();
+        if (Cfg.Lvl.Boss) PanicAt = int.MaxValue;
         HasCarry = false; ToolSel = Tool.Shovel; Scrubbing = false; Filling = false; Water = 1f; emptyMsgCd = 0f;
         Yaw = 0f; Pitch = -0.15f;
         Player.Position = new Vector3(0f, 0f, 4.6f);
@@ -273,12 +283,14 @@ public partial class Main : Node3D
         Ui.HideMsg();
         Audio.SetMode(mode == GameMode.Playing ? "calm" : "off");
         Mode = mode;
-        if (mode == GameMode.Playing) Say(Loc.T(Cfg.Lvl.No > 1 ? "intro" + Cfg.Lvl.No : "intro", ("k", IsTouch ? Loc.T("key_tap_btn") : Loc.T("key_space"))), 4f);
+        if (mode == GameMode.Playing && Cfg.Lvl.Boss) Say(Loc.T("intro4", ("n", ((int)Cfg.Lvl.BossGrace).ToString())), 5f);
+        else if (mode == GameMode.Playing) Say(Loc.T(Cfg.Lvl.No > 1 ? "intro" + Cfg.Lvl.No : "intro", ("k", IsTouch ? Loc.T("key_tap_btn") : Loc.T("key_space"))), 4f);
     }
 
     // first start or resume
     public void StartPressed()
     {
+        if (bossFailT > 0f) return;
         if (Mode == GameMode.Title) { Reset(GameMode.Playing); }
         else if (Mode == GameMode.Paused) { Mode = GameMode.Playing; Audio.SetMode(Phase == 2 ? "panic" : "calm"); }
         else return;
@@ -518,6 +530,7 @@ public partial class Main : Node3D
         if (Mode == GameMode.Playing) UpdatePlayer(dt);
         else { Target = null; LumpT = null; PuddleT = null; CrustT = null; Scrubbing = false; Scraping = false; }
         if (Mode == GameMode.Playing) TickSpecial(dt);
+        if (Mode == GameMode.Playing && Boss != null) BossTick(dt);
         if (Mode == GameMode.Playing && Cfg.Lvl.No == 3 && !twistDone && Phase == 1 && RegDumped * 2 >= Cfg.RegTotal)
         {
             twistDone = true; Audio.Bark(); shake = 0.4f;
@@ -844,6 +857,64 @@ public partial class Main : Node3D
         return best;
     }
 
+    // ------------------------------------------------------------ level 4: Dona Ermelinda's inspection
+    void BossTick(float dt)
+    {
+        if (GraceLeft > 0f) GraceLeft = Mathf.Max(0f, GraceLeft - dt);
+        Boss.Tick(dt, this);
+        if (Mode != GameMode.Playing) return;
+        // Buba keeps leaving surprises
+        bossDropT -= dt;
+        if (bossDropT <= 0f && StopsDone < Ermelinda.Route.Length)
+        {
+            bossDropT = Rand(Cfg.Lvl.BossDropMin, Cfg.Lvl.BossDropMax);
+            Vector2 bp = Dog.P;
+            if (!Room.InFurniture(bp.X, bp.Y, 0.3f) && bp.DistanceTo(PP) > 0.8f)
+            {
+                if (GD.Randf() < 0.25f) { var q = Puddle.Create(bp.X, bp.Y, Cfg.Lvl.PuddleR0, Cfg.Lvl.PuddleMax); AddChild(q); Puddles.Add(q); }
+                else AddPoop(bp.X, bp.Y, false, GD.RandRange(0, Cfg.NormalTypes - 1), "", Colors.White);
+                Audio.Pop(); Say(Loc.T("buba_surprise"), 2.5f);
+            }
+        }
+    }
+
+    public bool MessNear(Vector2 p, float r)
+    {
+        foreach (var o in Poops) if (o.Hidden == "" && o.P.DistanceTo(p) < r) return true;
+        foreach (var q in Puddles) if (q.P.DistanceTo(p) < r + q.R * 0.6f) return true;
+        foreach (var c in Crusts) if (c.P.DistanceTo(p) < r) return true;
+        return false;
+    }
+
+    public void BossEntered() { Audio.Bark(); shake = 0.3f; Say(Loc.T("boss_enter"), 4f); }
+
+    public void BossStopDone(int done)
+    {
+        StopsDone = done;
+        if (done >= Ermelinda.Route.Length) { Win(); return; }
+        Audio.Ding();
+        Say(Loc.T("boss_ok", ("n", (Ermelinda.Route.Length - done).ToString())), 2.5f);
+    }
+
+    public void BossStrike()
+    {
+        if (Mode != GameMode.Playing) return;
+        Strikes++;
+        Audio.Buzz(); shake = Mathf.Max(shake, 0.3f); FlashT = 0.4f; Haptic(60);
+        if (Strikes >= 3) { BossFail(); return; }
+        Say(Loc.T("boss_strike", ("n", Strikes.ToString())), 3f);
+    }
+
+    void BossFail()
+    {
+        Mode = GameMode.Paused;
+        bossFailT = 3f;
+        Audio.SetMode("off");
+        Say(Loc.T("boss_fail"), 3f);
+        int token = ++runId;
+        GetTree().CreateTimer(3.0).Timeout += () => { if (token == runId && Mode == GameMode.Paused && bossFailT > 0f) { Reset(GameMode.Playing); } };
+    }
+
     // detergent spray: works at a distance, shrinks a puddle fast or softens a dried crust for the scraper
     void DoSpray()
     {
@@ -969,6 +1040,7 @@ public partial class Main : Node3D
     {
         if (finalDropped && RegDumped >= Cfg.RegTotal && SpecialDone >= SpecialTotal) { Win(); return; }
         if (Phase == 1 && RegDumped >= PanicAt) StartPanic();
+        else if (Cfg.Lvl.Boss) Say(prefix, 1.6f);
         else Say(Loc.T("togo", ("p", prefix), ("n", Mathf.Max(0, TotalNow - Cleaned).ToString())), 2f);
     }
 
@@ -1171,6 +1243,7 @@ public partial class Main : Node3D
     // ------------------------------------------------------------ text for the HUD
     public float Percent()
     {
+        if (Cfg.Lvl.Boss) return Mathf.Round(100f * StopsDone / Ermelinda.Route.Length);
         float v = 90f * RegDumped / Cfg.RegTotal + 10f * SpecialDone / Mathf.Max(1, SpecialTotal);
         return Mathf.Min(100f, Mathf.Round(v));
     }

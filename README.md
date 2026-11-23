@@ -1,6 +1,6 @@
 # Operation Tidy-Up: Mission Poop-astrophe (Godot 4.7.2 Mono / C#)
 
-Levels 1 (living room) and 2 (garden party) of the game. Level 2 adds the scraper (key 3) for dried mess, dirty bucket water, bigger puddles and an earlier, harder Buba panic with several exploding special drops. Pick the level on the title screen; finishing Level 1 offers 'Next level'. Everything is built in code (no art assets needed).
+Levels 1 (living room), 2 (garden party) and 3 (kitchen, with the detergent spray on key 4: 8 charges, works at a distance, shrinks puddles and softens dried mess; Dona Ermelinda arrives early at half way) of the game. Level 2 adds the scraper (key 3) for dried mess, dirty bucket water, bigger puddles and an earlier, harder Buba panic with several exploding special drops. Pick the level on the title screen; finishing Level 1 offers 'Next level'. Everything is built in code (no art assets needed).
 
 ## Run
 1. Open Godot 4.7.2 **.NET/Mono** editor -> Import -> select `project.godot`.
@@ -46,3 +46,6 @@ yaw constant at the top of `Scripts/Assets.cs` (add 180). Kenney's licence is CC
 
 ## Menu
 The game opens on a main menu (Play, Levels, Settings, Quit) over a slow camera pan of the level. Progress (unlocked levels) and the minimap setting are saved in user://save.cfg; language is saved in user://settings.cfg. The pause screen has a 'Main menu' button.
+
+## Level 4: The Inspection (boss)
+Dona Ermelinda enters after 20 s and walks a fixed route of 6 marked spots (gold ring on the floor and minimap), inspecting each for 3.5 s with her white glove. Any mess near her is a strike (3 strikes restart the level). Buba keeps dropping new poops and puddles. Clear all 6 spots to win.

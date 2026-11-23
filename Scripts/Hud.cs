@@ -329,7 +329,9 @@ public partial class Hud : CanvasLayer
         pct.Text = (int)g.Percent() + "%";
         float frac = Mathf.Clamp(g.Percent() / 100f, 0f, 1f);
         barFill.Position = Vector2.Zero; barFill.Size = new Vector2(barBg.Size.X * frac, barBg.Size.Y);
-        count.Text = Loc.T("cleaned", ("n", g.Cleaned.ToString()), ("t", g.TotalNow.ToString()));
+        if (Cfg.Lvl.Boss) count.Text = g.GraceLeft > 0f ? Loc.T("boss_wait", ("n", ((int)Mathf.Ceil(g.GraceLeft)).ToString()))
+            : Loc.T("boss_hud", ("s", g.Strikes.ToString()), ("n", g.StopsDone.ToString()), ("t", Ermelinda.Route.Length.ToString()));
+        else count.Text = Loc.T("cleaned", ("n", g.Cleaned.ToString()), ("t", g.TotalNow.ToString()));
         string st = Loc.T(g.Audio != null && g.Audio.Muted ? "snd_off" : "snd_on");
         if (g.IsTouch) st = st.Replace(" (M)", "");      // no keyboard on a phone
         snd.Text = st;
