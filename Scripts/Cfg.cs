@@ -9,7 +9,7 @@ public static class Cfg
 
     public const int NormalTypes = 3;         // brown, green, pink
     public const int Rad = 3;                 // index of the radioactive type
-    public const int MaxLevel = 2;
+    public const int MaxLevel = 3;
 
     // Per-level settings (level 1 = the living room, level 2 = the neighbours' garden party).
     public class LevelDef
@@ -23,6 +23,7 @@ public static class Cfg
         public float BubaSpeed = 1f, BumpCd = 1.5f, FuseMin = 3f, FuseMax = 5f;
         public float PuddleR0 = 0.6f, PuddleMax = 1.7f, PuddleGrow = 0.02f;
         public bool Scraper, DirtyWater;
+        public int Spray;                      // detergent spray charges (0 = no spray tool)
         public Vector2[] BinPos;
         public Vector2 TablePos = new Vector2(0f, -2.6f);
         public float TapX = -3.2f;
@@ -38,7 +39,22 @@ public static class Cfg
 
     public static void SetLevel(int n)
     {
-        if (n == 2)
+        if (n == 3)
+        {
+            Lvl = new LevelDef
+            {
+                No = 3, PerColor = 7, Puddles = 4, Crusts = 6, Drops = 3,
+                PanicMin = 0.3f, PanicMax = 0.6f,
+                BubaSpeed = 1.35f, BumpCd = 0.8f, FuseMin = 2f, FuseMax = 3.5f,
+                PuddleR0 = 0.9f, PuddleMax = 2.4f, PuddleGrow = 0.035f,
+                Scraper = true, DirtyWater = true, Spray = 8,
+                BinPos = new[] { new Vector2(-8.2f, 5.4f), new Vector2(8.0f, 5.4f), new Vector2(8.4f, -0.4f), new Vector2(-8.3f, -1.2f) },
+                TablePos = new Vector2(0f, -2.6f), TapX = 3.0f,
+                RugCircle = new Vector4(-5.0f, 3.4f, 1.1f, 0f), RugRect = new Vector4(-1.6f, 0.4f, 1.6f, 1.4f),
+                RugCircleColor = Hex("#f2b6c9"), RugRectColor = Hex("#b6a8e8"),
+            };
+        }
+        else if (n == 2)
         {
             Lvl = new LevelDef
             {

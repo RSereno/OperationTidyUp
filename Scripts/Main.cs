@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 
 public enum GameMode { Title, Playing, Paused, Won }
-public enum Tool { Shovel, Mop, Scraper }
+public enum Tool { Shovel, Mop, Scraper, Spray }
 
 // Game controller for Level 1: player, carrying, bins, puddles, hidden poops, radioactive poop, slipping, Buba's panic.
 public partial class Main : Node3D
@@ -58,7 +58,9 @@ public partial class Main : Node3D
     float fvx, fvz, slipT, slipImm, slowT, bumpCd, shake, swingT, coolT, bob, mopT, scrubSnd, peek = 1f, actionBuf, msgT;
     Vector2 mv;
     int runId;
-    Node3D shovel, mop, scraper, carried;
+    Node3D shovel, mop, scraper, spray, carried;
+    public int Charges;
+    bool twistDone;
     readonly MeshInstance3D[] carriedBody = new MeshInstance3D[3];
 
     class Particle { public MeshInstance3D M; public StandardMaterial3D Mat; public Vector3 V; public float Life, Max; }
@@ -78,15 +80,15 @@ public partial class Main : Node3D
 
         var env = new Godot.Environment();
         env.BackgroundMode = Godot.Environment.BGMode.Color;
-        bool garden = Cfg.Lvl.No == 2;
-        env.BackgroundColor = Cfg.Hex(garden ? "#9fd8ff" : "#f4d9e6");
+        bool garden = Cfg.Lvl.No == 2, kitchen = Cfg.Lvl.No == 3;
+        env.BackgroundColor = Cfg.Hex(garden ? "#9fd8ff" : (kitchen ? "#fbe3a8" : "#f4d9e6"));
         env.AmbientLightSource = Godot.Environment.AmbientSource.Color;
         env.AmbientLightColor = Colors.White;
         env.AmbientLightEnergy = garden ? 0.88f : 0.78f;
         var we = new WorldEnvironment(); we.Environment = env; AddChild(we);
         var sun = new DirectionalLight3D(); sun.RotationDegrees = new Vector3(-55f, 35f, 0f); sun.LightEnergy = garden ? 0.85f : 0.45f; AddChild(sun);
 
-        if (garden) Garden.Build(this, out Bins); else Room.Build(this, out Bins);
+        if (garden) Garden.Build(this, out Bins); else if (kitchen) Kitchen.Build(this, out Bins); else Room.Build(this, out Bins);
         float tx = Cfg.Lvl.TapX;
         TapObj = Tap.Create(tx); AddChild(TapObj);
         Room.Solid(this, tx - 0.65f, 5.5f, tx + 1.25f, 6.4f);     // sink + bucket footprint (collider + minimap + spawn avoidance)
@@ -210,6 +212,13 @@ public partial class Main : Node3D
         Top(Gfx.Sphere(scraper, 0.06f, Cfg.Hex("#ffd23f"), new Vector3(0f, 0.3f, 0f), 1f, false, 10), 10);
         Top(Gfx.Sphere(scraper, 0.06f, Cfg.Hex("#ffd23f"), Vector3.Zero, 1f, false, 10), 10);
         scraper.Scale = Vector3.One * 0.55f; scraper.Visible = false;
+        // detergent spray bottle (first person)
+        spray = new Node3D(); cam.AddChild(spray);
+        Top(Gfx.Cyl(spray, 0.07f, 0.08f, 0.3f, Cfg.Hex("#5ec8e8"), Vector3.Zero, 1f, false, 12), 10);
+        Top(Gfx.Cyl(spray, 0.05f, 0.07f, 0.06f, Cfg.Hex("#ffffff"), new Vector3(0f, 0.18f, 0f), 1f, false, 12), 10);
+        Top(Gfx.Box(spray, new Vector3(0.05f, 0.05f, 0.16f), Cfg.Hex("#ff5c8a"), new Vector3(0f, 0.24f, -0.06f)), 10);
+        Top(Gfx.Box(spray, new Vector3(0.03f, 0.1f, 0.03f), Cfg.Hex("#ff5c8a"), new Vector3(0f, 0.12f, -0.09f)), 10);
+        spray.Scale = Vector3.One * 0.9f; spray.Visible = false;
     }
 
     static MeshInstance3D Top(MeshInstance3D mi, int priority) { Gfx.OnTop(mi, priority); return mi; }
@@ -220,7 +229,7 @@ public partial class Main : Node3D
         foreach (var b in Bins) b.Relabel();
         if (TapObj != null) TapObj.Relabel();
         Room.RelabelPortrait();
-        Garden.Relabel();
+        Garden.Relabel(); Kitchen.Relabel();
         Ui.Relabel();
     }
 
@@ -251,6 +260,7 @@ public partial class Main : Node3D
         SpecialTotal = Cfg.Lvl.Drops; SpecialDone = 0; finalDropped = false; panicEndT = -1f; CarrySpecial = false; CarrySmall = false;
         DropsLeft = 0; dirtyWarned = false; Scraping = false; ScrapeP = 0f; CrustT = null;
         PanicAt = Mathf.Clamp(Mathf.RoundToInt(Cfg.RegTotal * Rand(Cfg.Lvl.PanicMin, Cfg.Lvl.PanicMax)), 1, Cfg.RegTotal);   // random moment, level 1: ~63%..90%
+        Charges = Cfg.Lvl.Spray; twistDone = false;
         HasCarry = false; ToolSel = Tool.Shovel; Scrubbing = false; Filling = false; Water = 1f; emptyMsgCd = 0f;
         Yaw = 0f; Pitch = -0.15f;
         Player.Position = new Vector3(0f, 0f, 4.6f);
@@ -263,7 +273,7 @@ public partial class Main : Node3D
         Ui.HideMsg();
         Audio.SetMode(mode == GameMode.Playing ? "calm" : "off");
         Mode = mode;
-        if (mode == GameMode.Playing) Say(Loc.T(Cfg.Lvl.No == 2 ? "intro2" : "intro", ("k", IsTouch ? Loc.T("key_tap_btn") : Loc.T("key_space"))), 4f);
+        if (mode == GameMode.Playing) Say(Loc.T(Cfg.Lvl.No > 1 ? "intro" + Cfg.Lvl.No : "intro", ("k", IsTouch ? Loc.T("key_tap_btn") : Loc.T("key_space"))), 4f);
     }
 
     // first start or resume
@@ -454,6 +464,7 @@ public partial class Main : Node3D
                 case Key.Key1: SetTool(Tool.Shovel); break;
                 case Key.Key2: SetTool(Tool.Mop); break;
                 case Key.Key3: SetTool(Tool.Scraper); break;
+                case Key.Key4: SetTool(Tool.Spray); break;
                 case Key.F: CycleTool(); break;
                 case Key.M: Audio.ToggleMute(); break;
                 case Key.N: ShowMinimap = !ShowMinimap; Save.Minimap = ShowMinimap; Save.Store(); break;
@@ -474,6 +485,7 @@ public partial class Main : Node3D
     {
         if (ToolSel == Tool.Shovel) SetTool(Tool.Mop);
         else if (ToolSel == Tool.Mop) SetTool(Cfg.Lvl.Scraper ? Tool.Scraper : Tool.Shovel);
+        else if (ToolSel == Tool.Scraper) SetTool(Cfg.Lvl.Spray > 0 ? Tool.Spray : Tool.Shovel);
         else SetTool(Tool.Shovel);
     }
 
@@ -481,11 +493,13 @@ public partial class Main : Node3D
     {
         if (Mode != GameMode.Playing || ToolSel == t) return;
         if (t == Tool.Scraper && !Cfg.Lvl.Scraper) return;
+        if (t == Tool.Spray && Cfg.Lvl.Spray <= 0) return;
         if (t != Tool.Shovel && HasCarry) { Say(Loc.T("handsfull"), 2f); return; }
         ToolSel = t; Audio.Swish();
         string k = IsTouch ? Loc.T("the_button") : Loc.T("key_space");
         if (t == Tool.Mop) Say(Loc.T("mopready", ("k", k)), 2f);
         else if (t == Tool.Scraper) Say(Loc.T("scraperready", ("k", k)), 2f);
+        else if (t == Tool.Spray) Say(Loc.T("sprayready", ("k", k)), 2f);
         else Say(Loc.T("shovelready"), 2f);
     }
 
@@ -504,6 +518,11 @@ public partial class Main : Node3D
         if (Mode == GameMode.Playing) UpdatePlayer(dt);
         else { Target = null; LumpT = null; PuddleT = null; CrustT = null; Scrubbing = false; Scraping = false; }
         if (Mode == GameMode.Playing) TickSpecial(dt);
+        if (Mode == GameMode.Playing && Cfg.Lvl.No == 3 && !twistDone && Phase == 1 && RegDumped * 2 >= Cfg.RegTotal)
+        {
+            twistDone = true; Audio.Bark(); shake = 0.4f;
+            Say(Loc.T("twist"), 4.5f);
+        }
         AnimateWorld(dt);
         Dog.Tick(dt, this);
     }
@@ -635,7 +654,7 @@ public partial class Main : Node3D
             if (scrapeTarget != null)
             {
                 Scraping = true; mopT += dt; scrapeSnd -= dt;
-                scrapeTarget.Progress += dt / 2f;
+                scrapeTarget.Progress += dt / (scrapeTarget.Soft ? 0.7f : 2f);
                 if (scrapeSnd <= 0f)
                 {
                     scrapeSnd = 0.18f; Audio.Scrub(); Haptic(10);
@@ -651,7 +670,7 @@ public partial class Main : Node3D
         if (actionBuf > 0f)
         {
             actionBuf -= dt;
-            if (coolT <= 0f) { actionBuf = 0f; if (ToolSel == Tool.Shovel) Act(); }
+            if (coolT <= 0f) { actionBuf = 0f; if (ToolSel == Tool.Shovel) Act(); else if (ToolSel == Tool.Spray) DoSpray(); }
         }
         Target = HasCarry ? null : FindTarget();
         LumpT = HasCarry ? null : FindLump();
@@ -738,8 +757,8 @@ public partial class Main : Node3D
         cam.Rotation = new Vector3(Pitch, 0f, roll);
         Player.Rotation = new Vector3(0f, Yaw, 0f);
 
-        bool mopOn = ToolSel == Tool.Mop, scrOn = ToolSel == Tool.Scraper;
-        shovel.Visible = ToolSel == Tool.Shovel; mop.Visible = mopOn; scraper.Visible = scrOn;
+        bool mopOn = ToolSel == Tool.Mop, scrOn = ToolSel == Tool.Scraper, spOn = ToolSel == Tool.Spray;
+        shovel.Visible = ToolSel == Tool.Shovel; mop.Visible = mopOn; scraper.Visible = scrOn; spray.Visible = spOn;
         float swing = swingT > 0f ? Mathf.Sin((1f - swingT / 0.3f) * Mathf.Pi) : 0f;
         if (mopOn)
         {
@@ -747,6 +766,12 @@ public partial class Main : Node3D
             bool busy = Scrubbing || Filling;
             mop.Rotation = new Vector3(0.95f + (busy ? 0.15f : 0f), 0f, 0.12f);
             mop.Position = new Vector3(0.3f + (busy ? w * 0.16f : 0f), -0.3f + bobY * 0.5f, -0.66f - (busy ? Mathf.Abs(w) * 0.08f : 0f));
+        }
+        else if (spOn)
+        {
+            float kick = coolT > 0f ? Mathf.Clamp(coolT / 0.5f, 0f, 1f) : 0f;
+            spray.Rotation = new Vector3(0.35f + kick * 0.25f, 0f, 0.1f);
+            spray.Position = new Vector3(0.32f, -0.3f + bobY * 0.5f, -0.6f + kick * 0.06f);
         }
         else if (scrOn)
         {
@@ -817,6 +842,45 @@ public partial class Main : Node3D
             if ((dl < 0.8f || d.Dot(fw) / (dl > 0.001f ? dl : 1f) > 0.3f) && dl < bd) { bd = dl; best = c; }
         }
         return best;
+    }
+
+    // detergent spray: works at a distance, shrinks a puddle fast or softens a dried crust for the scraper
+    void DoSpray()
+    {
+        Vector2 pp = PP, fw = Fwd;
+        Puddle bq = null; Crust bc = null; float bd = 3.8f;
+        foreach (var q in Puddles)
+        {
+            Vector2 d = q.P - pp; float dl = d.Length();
+            if (dl > 0.01f && dl - q.R < bd && d.Normalized().Dot(fw) > 0.8f) { bd = dl - q.R; bq = q; bc = null; }
+        }
+        foreach (var c in Crusts)
+        {
+            Vector2 d = c.P - pp; float dl = d.Length();
+            if (dl > 0.01f && dl < bd && d.Normalized().Dot(fw) > 0.8f) { bd = dl; bc = c; bq = null; }
+        }
+        coolT = 0.5f;
+        if (Charges <= 0) { Audio.Buzz(); Say(Loc.T("spray_empty"), 2f); return; }
+        if (bq == null && bc == null) { Audio.Buzz(); Say(Loc.T("spray_none"), 1.8f); return; }
+        Charges--;
+        Audio.Swish(); Audio.Scrub(); Haptic(15);
+        Vector2 tp = bq != null ? bq.P : bc.P;
+        for (int i = 1; i <= 4; i++)
+        {
+            Vector2 s = pp + (tp - pp) * (i / 4f);
+            Burst(s.X, 1.1f - 0.25f * i, s.Y, new[] { Cfg.Hex("#bff0ff"), Colors.White }, 3, 0.4f, 0.45f, 0.05f);
+        }
+        if (bq != null)
+        {
+            bq.R -= 0.7f;
+            if (bq.R <= 0.22f) CleanPuddle(bq);
+        }
+        else
+        {
+            bc.Soft = true;
+            Say(Loc.T("crust_soft"), 2f);
+        }
+        if (Charges == 0) Say(Loc.T("spray_empty"), 2.4f);
     }
 
     void FinishCrust(Crust c)
@@ -1140,6 +1204,11 @@ public partial class Main : Node3D
             if (Target != null) return Loc.T("pr_mopnote", ("k", Loc.T(IsTouch ? "pr_mopnote_touch" : "pr_mopnote_desk")));
             return "";
         }
+        if (ToolSel == Tool.Spray)
+        {
+            if (Charges <= 0) return Loc.T("spray_empty");
+            ready = true; return Loc.T(IsTouch ? "pr_spray_touch" : "pr_spray_desk", ("n", Charges.ToString()));
+        }
         if (ToolSel == Tool.Scraper)
         {
             if (CrustT != null) { ready = true; return Loc.T(IsTouch ? "pr_scrape_touch" : "pr_scrape_desk"); }
@@ -1157,6 +1226,7 @@ public partial class Main : Node3D
         if (HasCarry) return Loc.T("b_dump");
         if (ToolSel == Tool.Mop) return Loc.T(TapInReach() && (PuddleT == null || Water <= 0f) ? "b_refill" : "b_scrub");
         if (ToolSel == Tool.Scraper) return Loc.T("b_scrape");
+        if (ToolSel == Tool.Spray) return Loc.T("b_spray");
         return Loc.T("b_scoop");
     }
 }

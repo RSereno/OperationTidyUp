@@ -195,6 +195,7 @@ public partial class Crust : Node3D
 {
     public int Type;                    // colour of the poop hiding in it
     public float Progress;              // 0..1 while scraping
+    public bool Soft;                   // softened by the detergent spray: scrapes much faster
     public float Seed;
     public float R = 0.5f;
     Node3D visual;

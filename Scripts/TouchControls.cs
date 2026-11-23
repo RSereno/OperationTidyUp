@@ -37,6 +37,7 @@ public partial class TouchControls : Control
     Rect2 MuteRect { get { var v = View; return new Rect2(v.X - 98f, 74f, 40f, 40f); } }
     Rect2 PauseRect { get { var v = View; return new Rect2(v.X - 52f, 74f, 40f, 40f); } }
     Rect2 Chip3 { get { var v = View; return new Rect2(12f, v.Y - 156f, 124f, 40f); } }
+    Rect2 Chip4 { get { var v = View; return new Rect2(12f, v.Y - 204f, 124f, 40f); } }
     Rect2 Chip1 { get { var v = View; return new Rect2(12f, v.Y - 108f, 124f, 40f); } }
     Rect2 Chip2 { get { var v = View; return new Rect2(12f, v.Y - 60f, 124f, 40f); } }
 
@@ -75,6 +76,7 @@ public partial class TouchControls : Control
         if (MuteRect.HasPoint(p)) { if (g.Audio != null) g.Audio.ToggleMute(); return; }
         if (Chip1.HasPoint(p)) { g.SetTool(Tool.Shovel); return; }
         if (Chip2.HasPoint(p)) { g.SetTool(Tool.Mop); return; }
+        if (Cfg.Lvl.Spray > 0 && Chip4.HasPoint(p)) { g.SetTool(Tool.Spray); return; }
         if (Cfg.Lvl.Scraper && Chip3.HasPoint(p)) { g.SetTool(Tool.Scraper); return; }
         if (p.DistanceTo(ActCenter) <= ActR + 14f)
         {
