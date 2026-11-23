@@ -16,7 +16,7 @@ public static class Room
         return false;
     }
 
-    static StaticBody3D Body(Node parent, Vector3 size, Vector3 pos)
+    public static StaticBody3D Body(Node parent, Vector3 size, Vector3 pos)
     {
         var sb = new StaticBody3D();
         sb.CollisionLayer = 1; sb.CollisionMask = 0;
@@ -269,7 +269,7 @@ public static class Room
 
     public static void RelabelPortrait()
     {
-        if (PortraitBanner != null) PortraitBanner.Text = Loc.T("portrait_banner");
-        if (PortraitName != null) PortraitName.Text = Loc.T("portrait_name");
+        if (PortraitBanner != null && GodotObject.IsInstanceValid(PortraitBanner)) PortraitBanner.Text = Loc.T("portrait_banner");
+        if (PortraitName != null && GodotObject.IsInstanceValid(PortraitName)) PortraitName.Text = Loc.T("portrait_name");
     }
 }

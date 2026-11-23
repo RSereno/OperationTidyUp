@@ -30,6 +30,8 @@ public partial class Minimap : Control
         }
         foreach (var bin in g.Bins)
             DrawCircle(Pt(bin.Pos.X, bin.Pos.Y), Mathf.Max(3.5f, 5f * ms / 10f), Cfg.Types[bin.Type].Bin);
+        foreach (var cr in g.Crusts)
+            DrawRect(new Rect2(Pt(cr.Position.X, cr.Position.Z) - new Vector2(3f, 3f), new Vector2(6f, 6f)), new Color(0.45f, 0.3f, 0.15f, 0.95f));
         foreach (var q in g.Puddles)
             DrawCircle(Pt(q.Position.X, q.Position.Z), Mathf.Max(3f, q.R * ms), new Color(0.79f, 0.64f, 0.23f, 0.7f));
         var font = ThemeDB.FallbackFont;

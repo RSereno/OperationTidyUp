@@ -25,6 +25,7 @@ public partial class Sfx : Node
 
     public override void _Ready()
     {
+        Muted = AudioServer.IsBusMute(0);
         for (int i = 0; i < PoolSize; i++)
         {
             var p = new AudioStreamPlayer();

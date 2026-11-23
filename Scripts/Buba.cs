@@ -5,7 +5,7 @@ public partial class Buba : CharacterBody3D
 {
     public float Ang = Mathf.Pi, Dir = Mathf.Pi;
     float wanderT, pause, wag, zig, stepT;
-    public float PanicT;
+    public float PanicT, RedropT;
     public bool Dropped, Moving;
     bool hasWp;
     Vector2 wp;
@@ -146,6 +146,12 @@ public partial class Buba : CharacterBody3D
         else
         {
             PanicT += dt; zig += dt;
+            if (Dropped && g.DropsLeft > 0)
+            {
+                // level 2: he has another special drop in him
+                RedropT -= dt;
+                if (RedropT <= 0f) { Dropped = false; PanicT = 1f; hasWp = false; g.ChooseDropSpot(); }
+            }
             Vector2 tgt;
             bool goDrop = !Dropped && PanicT >= 1.7f;
             if (goDrop) tgt = g.DropSpot;
@@ -159,7 +165,8 @@ public partial class Buba : CharacterBody3D
             float lat = Mathf.Sin(zig * 11f) * 3.6f;
             if (goDrop) lat *= Mathf.Clamp(d / 1.8f, 0.1f, 1f);
             float fx = Mathf.Sin(a), fz = Mathf.Cos(a), rx = Mathf.Cos(a), rz = -Mathf.Sin(a);
-            vx = fx * 5.6f + rx * lat; vz = fz * 5.6f + rz * lat;
+            float spd = 5.6f * Cfg.Lvl.BubaSpeed;
+            vx = fx * spd + rx * lat; vz = fz * spd + rz * lat;
             moving = true; wag += dt * 28f;
             if (goDrop && (d < 0.8f || PanicT > 7f))
             {

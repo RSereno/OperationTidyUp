@@ -6,7 +6,7 @@ public partial class Hud : CanvasLayer
 {
     Main g;
     Control root;
-    Label title, count, snd, pct, msg, prompt, banner, tool1, tool2;
+    Label title, count, snd, pct, msg, prompt, banner, tool1, tool2, tool3;
     ColorRect top, barBg, barFill, cross;
     TextureRect vig, flash;
     ColorRect waterBg, waterFill;
@@ -17,7 +17,8 @@ public partial class Hud : CanvasLayer
     Button startBtn, langBtn, soundBtn;
     ColorRect victory;
     Label winH, winP;
-    Button restartBtn;
+    Button restartBtn, nextBtn, levelBtn, menuBtn;
+    ColorRect scrapeBg, scrapeFill;
     bool overlayPaused;
     float bannerT;
     bool panicOn;
@@ -144,6 +145,9 @@ public partial class Hud : CanvasLayer
         chipOff = Box(new Color(1f, 1f, 1f, 0.78f), new Color(0f, 0f, 0f, 0f), 3, 14, 14);
         tool1 = Lbl(root, 15, Ink, HorizontalAlignment.Center); tool2 = Lbl(root, 15, Ink, HorizontalAlignment.Center);
         tool1.AddThemeStyleboxOverride("normal", chipOn); tool2.AddThemeStyleboxOverride("normal", chipOff);
+        tool3 = Lbl(root, 15, Ink, HorizontalAlignment.Center); tool3.AddThemeStyleboxOverride("normal", chipOff);
+        scrapeBg = new ColorRect(); scrapeBg.Color = new Color(1f, 1f, 1f, 0.8f); scrapeBg.MouseFilter = Control.MouseFilterEnum.Ignore; scrapeBg.Visible = false; root.AddChild(scrapeBg);
+        scrapeFill = new ColorRect(); scrapeFill.Color = new Color(0.62f, 0.45f, 0.25f); scrapeFill.MouseFilter = Control.MouseFilterEnum.Ignore; scrapeBg.AddChild(scrapeFill);
 
         waterBg = new ColorRect(); waterBg.Color = new Color(1f, 1f, 1f, 0.8f); waterBg.MouseFilter = Control.MouseFilterEnum.Ignore; waterBg.Visible = false; root.AddChild(waterBg);
         waterFill = new ColorRect(); waterFill.MouseFilter = Control.MouseFilterEnum.Ignore; waterBg.AddChild(waterFill);
@@ -156,6 +160,12 @@ public partial class Hud : CanvasLayer
 
         GetViewport().SizeChanged += Layout;
         Relabel();
+    }
+
+    public override void _ExitTree()
+    {
+        var vp = GetViewport();
+        if (vp != null) vp.SizeChanged -= Layout;
     }
 
     void BuildOverlay()
@@ -180,6 +190,10 @@ public partial class Hud : CanvasLayer
 
         startBtn = MakeButton(box, 22, new Color(1f, 0.84f, 0.42f), new Color(0.29f, 0.2f, 0.4f), new Vector2(260f, 52f));
         startBtn.Pressed += () => g.StartPressed();
+        levelBtn = MakeButton(box, 16, new Color(0.8f, 0.9f, 1f), Ink, new Vector2(220f, 40f));
+        levelBtn.Pressed += () => g.SelectLevel(Cfg.Lvl.No % Cfg.MaxLevel + 1);
+        menuBtn = MakeButton(box, 16, new Color(1f, 0.78f, 0.82f), Ink, new Vector2(220f, 40f));
+        menuBtn.Pressed += () => g.ToMenu();
         langBtn = MakeButton(box, 14, Colors.White, Ink, new Vector2(180f, 36f));
         langBtn.Pressed += () => Loc.Toggle();
         soundBtn = MakeButton(box, 14, Colors.White, Ink, new Vector2(180f, 36f));
@@ -198,6 +212,8 @@ public partial class Hud : CanvasLayer
         foreach (var l in new[] { winH, winP }) l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         restartBtn = MakeButton(box, 22, new Color(0.48f, 0.85f, 0.56f), new Color(0.12f, 0.3f, 0.18f), new Vector2(240f, 52f));
         restartBtn.Pressed += () => g.RestartPressed();
+        nextBtn = MakeButton(box, 22, new Color(1f, 0.84f, 0.42f), new Color(0.29f, 0.2f, 0.4f), new Vector2(240f, 52f));
+        nextBtn.Pressed += () => g.NextLevel();
     }
 
     // ---------------------------------------------------------------- layout and texts
@@ -215,21 +231,27 @@ public partial class Hud : CanvasLayer
         msg.Position = new Vector2(mx, 76f); msg.Size = new Vector2(mw, 10f);
         float pw = Mathf.Min(380f, vw - 24f);
         prompt.Position = new Vector2((vw - pw) / 2f, vh / 2f + 40f); prompt.Size = new Vector2(pw, 10f);
+        scrapeBg.Position = new Vector2(vw / 2f - 40f, vh / 2f + 22f); scrapeBg.Size = new Vector2(80f, 9f);
+        scrapeFill.Size = new Vector2(0f, 9f);
         banner.Position = new Vector2(0f, 112f); banner.Size = new Vector2(vw, 60f);
 
         if (touch)
         {
             tool1.Position = new Vector2(12f, vh - 108f); tool1.Size = new Vector2(124f, 40f);
             tool2.Position = new Vector2(12f, vh - 60f); tool2.Size = new Vector2(124f, 40f);
+            tool3.Position = new Vector2(12f, vh - 156f); tool3.Size = new Vector2(124f, 40f);
             mini.Position = new Vector2(8f, 72f); mini.Size = new Vector2(126f, 91f);
             waterBg.Position = new Vector2(12f, vh - 18f); waterBg.Size = new Vector2(124f, 16f);
         }
         else
         {
-            tool1.Position = new Vector2(vw / 2f - 134f, vh - 52f); tool1.Size = new Vector2(128f, 38f);
-            tool2.Position = new Vector2(vw / 2f + 6f, vh - 52f); tool2.Size = new Vector2(128f, 38f);
+            float off = Cfg.Lvl.Scraper ? 70f : 0f;
+            if (Cfg.Lvl.Scraper && vw < 800f) off = 140f + 0f;
+            tool1.Position = new Vector2(vw / 2f - 134f - off, vh - 52f); tool1.Size = new Vector2(128f, 38f);
+            tool2.Position = new Vector2(vw / 2f + 6f - off, vh - 52f); tool2.Size = new Vector2(128f, 38f);
+            tool3.Position = new Vector2(vw / 2f + 146f - off, vh - 52f); tool3.Size = new Vector2(128f, 38f);
             mini.Position = new Vector2(vw - 192f, vh - 142f); mini.Size = new Vector2(180f, 130f);
-            waterBg.Position = new Vector2(vw / 2f + 6f, vh - 72f); waterBg.Size = new Vector2(128f, 16f);
+            waterBg.Position = new Vector2(vw / 2f + 6f - (Cfg.Lvl.Scraper ? 70f : 0f), vh - 72f); waterBg.Size = new Vector2(128f, 16f);
         }
         float tw = Mathf.Min(520f, vw - 60f);
         foreach (var l in new[] { ovText, ovP1, ovP2, ovCtl, winH, winP }) l.CustomMinimumSize = new Vector2(tw, 0f);
@@ -238,13 +260,16 @@ public partial class Hud : CanvasLayer
     public void Relabel()
     {
         if (g == null) return;
-        title.Text = Loc.T("hud_title");
-        tool1.Text = Loc.T("tool1"); tool2.Text = Loc.T("tool2");
+        title.Text = Loc.T(Cfg.Lvl.No == 2 ? "hud_title2" : "hud_title");
+        tool1.Text = Loc.T("tool1"); tool2.Text = Loc.T("tool2"); tool3.Text = Loc.T("tool3");
         banner.Text = Loc.T("banner");
         langBtn.Text = Loc.T("langBtn");
         ovP1.Text = Loc.T("p1"); ovP2.Text = Loc.T("p2");
         ovCtl.Text = Loc.T(g.IsTouch ? "touch" : "desk");
-        winH.Text = Loc.T("win_h"); winP.Text = Loc.T("win_p"); restartBtn.Text = Loc.T("restart");
+        string wk = Cfg.Lvl.No == 2 ? "win2_" : "win_";
+        winH.Text = Loc.T(wk + "h"); winP.Text = Loc.T(wk + "p"); restartBtn.Text = Loc.T("restart");
+        nextBtn.Text = Loc.T("next_level");
+        menuBtn.Text = Loc.T("menu_main"); nextBtn.Visible = Cfg.Lvl.No < Cfg.MaxLevel;
         RelabelOverlay();
         Layout();
     }
@@ -254,8 +279,10 @@ public partial class Hud : CanvasLayer
         string sfx = g != null && g.IsTouch ? "_touch" : "";
         ovTitle.Text = Loc.T(overlayPaused ? "pa_title" : "ov_title");
         ovSub.Text = Loc.T(overlayPaused ? "pa_sub" : "ov_sub");
-        ovText.Text = Loc.T(overlayPaused ? "pa_text" : "ov_text");
+        ovText.Text = Loc.T(overlayPaused ? "pa_text" : (Cfg.Lvl.No == 2 ? "ov_text2" : "ov_text"));
         startBtn.Text = Loc.T((overlayPaused ? "resume" : "start") + sfx);
+        levelBtn.Text = Loc.T("level_btn", ("n", (Cfg.Lvl.No % Cfg.MaxLevel + 1).ToString()));
+        levelBtn.Visible = false; menuBtn.Text = Loc.T("menu_main"); menuBtn.Visible = overlayPaused;
     }
 
     // ---------------------------------------------------------------- show / hide
@@ -312,9 +339,13 @@ public partial class Hud : CanvasLayer
         prompt.AddThemeStyleboxOverride("normal", ready ? promptReady : promptIdle);
 
         bool showTools = playing;
-        tool1.Visible = showTools; tool2.Visible = showTools;
+        tool1.Visible = showTools; tool2.Visible = showTools; tool3.Visible = showTools && Cfg.Lvl.Scraper;
         tool1.AddThemeStyleboxOverride("normal", g.ToolSel == Tool.Shovel ? chipOn : chipOff);
         tool2.AddThemeStyleboxOverride("normal", g.ToolSel == Tool.Mop ? chipOn : chipOff);
+        tool3.AddThemeStyleboxOverride("normal", g.ToolSel == Tool.Scraper ? chipOn : chipOff);
+        tool3.Modulate = g.HasCarry ? new Color(1f, 1f, 1f, 0.45f) : Colors.White;
+        scrapeBg.Visible = playing && g.ScrapeP > 0.01f;
+        if (scrapeBg.Visible) scrapeFill.Size = new Vector2(scrapeBg.Size.X * Mathf.Clamp(g.ScrapeP, 0f, 1f), scrapeBg.Size.Y);
         tool2.Modulate = g.HasCarry ? new Color(1f, 1f, 1f, 0.45f) : Colors.White;
         cross.Visible = playing && !g.IsTouch;
         waterBg.Visible = playing && g.ToolSel == Tool.Mop;
@@ -323,7 +354,7 @@ public partial class Hud : CanvasLayer
             float wl = Mathf.Clamp(g.Water, 0f, 1f);
             waterFill.Position = Vector2.Zero; waterFill.Size = new Vector2(waterBg.Size.X * wl, waterBg.Size.Y);
             waterFill.Color = new Color(0.55f, 0.42f, 0.25f).Lerp(new Color(0.35f, 0.7f, 1f), wl);   // murkier as the water runs out
-            waterLbl.Text = Loc.T("bucket", ("n", ((int)Mathf.Round(wl * 100f)).ToString()));
+            waterLbl.Text = Loc.T(Cfg.Lvl.DirtyWater ? "bucket2" : "bucket", ("n", ((int)Mathf.Round(wl * 100f)).ToString()));
         }
 
         mini.Visible = g.ShowMinimap && (playing || g.Mode == GameMode.Paused);

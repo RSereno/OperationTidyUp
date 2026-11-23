@@ -3,16 +3,16 @@ using Godot;
 // Sink with a tap and the bucket: hold the mop here to refill the clean water.
 public partial class Tap : Node3D
 {
-    public static readonly Vector2 Spot = new Vector2(-3.2f, 5.85f);
-    public Vector2 Pos = Spot;
+    public Vector2 Pos;
     public Label3D Label, MarkerLabel;
     public Node3D Marker;
     MeshInstance3D stream, ring, cone, water;
 
-    public static Tap Create()
+    public static Tap Create(float x)
     {
         var t = new Tap();
-        t.Position = new Vector3(Spot.X, 0f, Spot.Y);
+        t.Pos = new Vector2(x, 5.85f);
+        t.Position = new Vector3(x, 0f, 5.85f);
         t.Build();
         return t;
     }

@@ -7,6 +7,7 @@ public partial class Poop : Node3D
     public bool Glow;
     public bool Special;                // part of Buba's special drop (the golden one or the little ones from its explosion)
     public float Size = 1f;             // 1 = normal, smaller for the explosion leftovers
+    public float Fuse = -1f;            // seconds until it explodes (Buba's golden drop only), -1 = no fuse
     public string Hidden = "";          // "", "rug" (lump on the rug) or "table" (under the coffee table)
     public float R = 0.26f;
     public float Seed;
@@ -119,9 +120,10 @@ public partial class Puddle : Node3D
     Node3D visual;
     public Vector2 P { get { return new Vector2(Position.X, Position.Z); } }
 
-    public static Puddle Create(float x, float z)
+    public static Puddle Create(float x, float z, float r0 = 0.6f, float max = 1.7f)
     {
         var q = new Puddle();
+        q.R = r0; q.Max = max;
         q.Seed = GD.Randf() * 10f;
         q.Position = new Vector3(x, 0.03f, z);   // above the rugs (their tops are at ~0.024)
         q.visual = new Node3D();
@@ -185,5 +187,51 @@ public partial class Bin : Node3D
         Label.Text = Type == Cfg.Rad ? Loc.T("hazard") : Loc.TypeName(Type).ToUpper();
         Label.Modulate = Colors.White;
         MarkerLabel.Text = Loc.T("dump_here");
+    }
+}
+
+// Dried, encrusted mess stuck to the floor: needs the scraper (hold the action for 2 s), then it turns into a normal poop.
+public partial class Crust : Node3D
+{
+    public int Type;                    // colour of the poop hiding in it
+    public float Progress;              // 0..1 while scraping
+    public float Seed;
+    public float R = 0.5f;
+    Node3D visual;
+    public Vector2 P { get { return new Vector2(Position.X, Position.Z); } }
+
+    public static Crust Create(float x, float z, int type)
+    {
+        var c = new Crust();
+        c.Type = type; c.Seed = GD.Randf() * 10f;
+        c.Position = new Vector3(x, 0.03f, z);
+        c.visual = new Node3D(); c.AddChild(c.visual);
+        Color dark = Cfg.Hex("#5e4126"), mid = Cfg.Hex("#7a5532");
+        float[,] blobs = { { 0f, 0f, 0.42f }, { 0.3f, 0.15f, 0.26f }, { -0.28f, 0.2f, 0.24f }, { 0.05f, -0.34f, 0.22f }, { -0.22f, -0.26f, 0.18f } };
+        for (int i = 0; i < 5; i++)
+            Gfx.Disc(c.visual, blobs[i, 2], (i % 2 == 0) ? dark : mid, new Vector3(blobs[i, 0], 0.004f * i, blobs[i, 1]), 1f);
+        // cracks
+        for (int i = 0; i < 4; i++)
+        {
+            var cr = Gfx.Box(c.visual, new Vector3(0.4f, 0.012f, 0.022f), Cfg.Hex("#3f2b17"), new Vector3(Mathf.Sin(i * 1.7f) * 0.15f, 0.026f, Mathf.Cos(i * 2.3f) * 0.15f));
+            cr.RotationDegrees = new Vector3(0f, i * 47f + 12f, 0f);
+        }
+        // dried lumps, tinted with the colour of what is inside
+        Color tint = Cfg.Types[type].Body[0].Darkened(0.35f);
+        for (int i = 0; i < 5; i++)
+        {
+            float a = i * 1.26f + c.Seed;
+            var ch = Gfx.Sphere(c.visual, 0.07f + (i % 3) * 0.02f, tint, new Vector3(Mathf.Cos(a) * 0.22f, 0.04f, Mathf.Sin(a) * 0.22f), 1f, false, 8);
+            ch.Scale = new Vector3(1f, 0.55f, 1f);
+        }
+        return c;
+    }
+
+    // shakes and swells while it is being scraped loose
+    public void Animate(float clock)
+    {
+        float k = Progress;
+        visual.Position = new Vector3(Mathf.Sin(clock * 55f + Seed) * 0.012f * k, 0f, Mathf.Cos(clock * 47f + Seed) * 0.012f * k);
+        visual.Scale = new Vector3(1f + 0.18f * k, 1f + 2.5f * k, 1f + 0.18f * k);
     }
 }
