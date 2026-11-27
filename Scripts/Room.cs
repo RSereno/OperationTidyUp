@@ -59,22 +59,31 @@ public static class Room
         float RX = Cfg.RoomX, RZ = Cfg.RoomZ, RH = Cfg.RoomH;
 
         // floor (planks) + ceiling
-        var floor = new MeshInstance3D();
-        var pm = new PlaneMesh(); pm.Size = new Vector2(RX * 2f, RZ * 2f);
-        floor.Mesh = pm;
-        var fm = new StandardMaterial3D();
-        fm.AlbedoTexture = FloorTexture(); fm.Uv1Scale = new Vector3(RX, RZ, 1f); fm.Roughness = 1f;
-        fm.TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps;
-        floor.MaterialOverride = fm;
-        root.AddChild(floor);
+        if (!Assets.BuildFloor(root, RX, RZ))
+        {
+            var floor = new MeshInstance3D();
+            var pm = new PlaneMesh(); pm.Size = new Vector2(RX * 2f, RZ * 2f);
+            floor.Mesh = pm;
+            var fm = new StandardMaterial3D();
+            fm.AlbedoTexture = FloorTexture(); fm.Uv1Scale = new Vector3(RX, RZ, 1f); fm.Roughness = 1f;
+            fm.TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps;
+            floor.MaterialOverride = fm;
+            root.AddChild(floor);
+        }
         Gfx.Box(root, new Vector3(RX * 2f, 0.1f, RZ * 2f), Cfg.Hex("#fff8ee"), new Vector3(0f, RH + 0.05f, 0f));
 
         // walls (visual + collision outside the room)
         var wallCol = Cfg.Hex("#f4d9e6");
-        Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, -RZ - 0.05f));
-        Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, RZ + 0.05f));
-        Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(-RX - 0.05f, RH / 2f, 0f));
-        Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(RX + 0.05f, RH / 2f, 0f));
+        bool windowModel;
+        bool wallModels = Assets.BuildWalls(root, RX, RZ, RH, wallCol, 1.5f, 2.6f, out windowModel);
+        if (!wallModels)
+        {
+            Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, -RZ - 0.05f));
+            Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, RZ + 0.05f));
+            Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(-RX - 0.05f, RH / 2f, 0f));
+            Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(RX + 0.05f, RH / 2f, 0f));
+        }
+        else if (windowModel) Gfx.Box(root, new Vector3(0.04f, RH, 2.6f), Cfg.Hex("#bfe6f7"), new Vector3(-RX - 0.2f, RH / 2f, 1.5f));   // sky behind the window piece
         Body(root, new Vector3(RX * 2f + 4f, 3f, 2f), new Vector3(0f, 1.5f, -RZ - 1f));
         Body(root, new Vector3(RX * 2f + 4f, 3f, 2f), new Vector3(0f, 1.5f, RZ + 1f));
         Body(root, new Vector3(2f, 3f, RZ * 2f + 4f), new Vector3(-RX - 1f, 1.5f, 0f));
@@ -95,10 +104,13 @@ public static class Room
         }
 
         // window (left wall)
-        Gfx.Box(root, new Vector3(0.12f, 1.5f, 2.6f), Colors.White, new Vector3(-RX + 0.07f, 1.7f, 1.5f));
-        Gfx.Box(root, new Vector3(0.03f, 1.3f, 2.4f), Cfg.Hex("#bfe6f7"), new Vector3(-RX + 0.14f, 1.7f, 1.5f), 1f, true);
-        Gfx.Box(root, new Vector3(0.05f, 1.3f, 0.06f), Colors.White, new Vector3(-RX + 0.16f, 1.7f, 1.5f));
-        Gfx.Box(root, new Vector3(0.05f, 0.06f, 2.4f), Colors.White, new Vector3(-RX + 0.16f, 1.7f, 1.5f));
+        if (!windowModel)
+        {
+            Gfx.Box(root, new Vector3(0.12f, 1.5f, 2.6f), Colors.White, new Vector3(-RX + 0.07f, 1.7f, 1.5f));
+            Gfx.Box(root, new Vector3(0.03f, 1.3f, 2.4f), Cfg.Hex("#bfe6f7"), new Vector3(-RX + 0.14f, 1.7f, 1.5f), 1f, true);
+            Gfx.Box(root, new Vector3(0.05f, 1.3f, 0.06f), Colors.White, new Vector3(-RX + 0.16f, 1.7f, 1.5f));
+            Gfx.Box(root, new Vector3(0.05f, 0.06f, 2.4f), Colors.White, new Vector3(-RX + 0.16f, 1.7f, 1.5f));
+        }
 
         BuildPortrait(root);
         Gfx.Box(root, new Vector3(0.7f, 0.9f, 0.05f), Colors.White, new Vector3(5f, 1.9f, -RZ + 0.04f));
@@ -169,7 +181,7 @@ public static class Room
         {
             // the shelf (despite its name) is open: 3 compartments, boards at y = 0.122 / 0.362 / 0.602 in model units,
             // interior x 0.04..0.76, depth z -0.21..0 (read from the .glb). Fill each compartment with a row of thin books.
-            GD.Print("Room: shelf books go inside the compartments (build marker v4)");
+            GD.Print("Room: shelf books go inside the compartments (build marker v5: room tiles + shovel model)");
             float[] floorsY = { 0.122f, 0.362f, 0.602f };
             string[] cols = { "#ff8fb1", "#8fd3ff", "#ffd66b", "#b79cff", "#7bd88f", "#ff9f6b", "#e8456a", "#5b4a7e" };
             var rng = new RandomNumberGenerator(); rng.Seed = 7;

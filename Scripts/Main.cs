@@ -189,12 +189,15 @@ public partial class Main : Node3D
 
         // shovel (first person)
         shovel = new Node3D(); cam.AddChild(shovel);
-        Top(Gfx.Cyl(shovel, 0.025f, 0.025f, 0.95f, Cfg.Hex("#b98b52"), Vector3.Zero, 1f, false, 8), 10);
-        Top(Gfx.Box(shovel, new Vector3(0.2f, 0.26f, 0.03f), Cfg.Hex("#9aa7b5"), new Vector3(0f, -0.55f, 0f)), 10);
-        Top(Gfx.Box(shovel, new Vector3(0.22f, 0.04f, 0.05f), Cfg.Hex("#7d8996"), new Vector3(0f, -0.43f, 0f)), 10);
-        Top(Gfx.Box(shovel, new Vector3(0.14f, 0.03f, 0.03f), Cfg.Hex("#b98b52"), new Vector3(0f, 0.47f, 0f)), 10);
-        Top(Gfx.Sphere(shovel, 0.06f, Cfg.Hex("#ffd23f"), new Vector3(0f, 0.3f, 0f), 1f, false, 10), 10);
-        Top(Gfx.Sphere(shovel, 0.06f, Cfg.Hex("#ffd23f"), new Vector3(0f, 0.05f, 0f), 1f, false, 10), 10);
+        if (Assets.PlaceTool(shovel, Assets.ToolDir + "shovel.glb", 1.15f, new Vector3(0f, -0.08f, 0f)) == null)
+        {
+            Top(Gfx.Cyl(shovel, 0.025f, 0.025f, 0.95f, Cfg.Hex("#b98b52"), Vector3.Zero, 1f, false, 8), 10);
+            Top(Gfx.Box(shovel, new Vector3(0.2f, 0.26f, 0.03f), Cfg.Hex("#9aa7b5"), new Vector3(0f, -0.55f, 0f)), 10);
+            Top(Gfx.Box(shovel, new Vector3(0.22f, 0.04f, 0.05f), Cfg.Hex("#7d8996"), new Vector3(0f, -0.43f, 0f)), 10);
+            Top(Gfx.Box(shovel, new Vector3(0.14f, 0.03f, 0.03f), Cfg.Hex("#b98b52"), new Vector3(0f, 0.47f, 0f)), 10);
+            Top(Gfx.Sphere(shovel, 0.06f, Cfg.Hex("#ffd23f"), new Vector3(0f, 0.3f, 0f), 1f, false, 10), 10);
+            Top(Gfx.Sphere(shovel, 0.06f, Cfg.Hex("#ffd23f"), new Vector3(0f, 0.05f, 0f), 1f, false, 10), 10);
+        }
         shovel.Scale = Vector3.One * 0.55f;
 
         // what sits on the shovel while carrying
