@@ -55,3 +55,6 @@ Earn 2 coins for every poop dumped or puddle cleaned (4 for Buba's special drops
 
 ## Dropping what you carry
 Press the same action button while carrying, away from any bin and with nothing stackable in reach, to put the poop down in front of you, e.g. to grab a different colour first. A stack from the wide/giant shovel is dropped as separate poops.
+
+## Shop unlocks and puddle limits
+The spray refill pack and the giant shovel unlock when you reach Level 3 (finishing Level 2 shows 'New items are available in the shop!'). Little poops from Buba's explosion can be stacked with the bigger shovels (they stack with each other, not with the golden one). Puddles now stop growing at a smaller maximum size per level (1.0-1.5 m radius).

@@ -308,7 +308,8 @@ public partial class Hud : CanvasLayer
     public void ShowVictory()
     {
         victory.Visible = true;
-        winP.Text = Loc.T(Cfg.Lvl.No > 1 ? "win" + Cfg.Lvl.No + "_p" : "win_p") + "\n" + Loc.T("coins_run", ("n", g.RunCoins.ToString()), ("t", Save.Coins.ToString()));
+        winP.Text = Loc.T(Cfg.Lvl.No > 1 ? "win" + Cfg.Lvl.No + "_p" : "win_p") + "\n" + Loc.T("coins_run", ("n", g.RunCoins.ToString()), ("t", Save.Coins.ToString()))
+            + (Save.Unlocked == Cfg.Lvl.No + 1 && Shop.HasNewAt(Cfg.Lvl.No + 1) ? "\n" + Loc.T("shop_new") : "");
         var rng = new RandomNumberGenerator(); rng.Randomize();
         Vector2 v = GetViewport().GetVisibleRect().Size;
         string[] cols = { "#ffd66b", "#ff8fb1", "#8fd3ff", "#7bd88f", "#b79cff", "#ffffff" };
