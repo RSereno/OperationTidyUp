@@ -115,12 +115,12 @@ public partial class Poop : Node3D
 // A spreading diarrhea puddle.
 public partial class Puddle : Node3D
 {
-    public float R = 0.6f, Max = 1.7f, Seed;
+    public float R = 0.6f, Max = 1.2f, Seed;
     public bool Special;                // left by the exploding special poop
     Node3D visual;
     public Vector2 P { get { return new Vector2(Position.X, Position.Z); } }
 
-    public static Puddle Create(float x, float z, float r0 = 0.6f, float max = 1.7f)
+    public static Puddle Create(float x, float z, float r0 = 0.6f, float max = 1.2f)
     {
         var q = new Puddle();
         q.R = r0; q.Max = max;

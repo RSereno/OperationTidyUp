@@ -115,7 +115,7 @@ public partial class MainMenu : CanvasLayer
         {
             var it = Shop.Items[i];
             bool owned = Shop.Has(it.Id);
-            shopBtns[i].Text = Loc.T("item_" + it.Id) + "  ·  " + (owned ? Loc.T("shop_owned") : it.Price + " " + Loc.T("coins_word")) + "\n" + Loc.T("item_" + it.Id + "_d");
+            shopBtns[i].Text = Loc.T("item_" + it.Id) + "  ·  " + (owned ? Loc.T("shop_owned") : (Shop.Available(it) ? it.Price + " " + Loc.T("coins_word") : Loc.T("shop_locked", ("n", it.Unlock.ToString())))) + "\n" + Loc.T("item_" + it.Id + "_d");
             shopBtns[i].Disabled = !Shop.CanBuy(it);
         }
         quitBtn.Text = Loc.T("menu_quit");

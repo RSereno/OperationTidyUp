@@ -39,10 +39,15 @@ public static class Kitchen
 
         // walls + colliders
         var wallCol = Cfg.Hex("#fbe3a8");
-        Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, -RZ - 0.05f));
-        Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, RZ + 0.05f));
-        Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(-RX - 0.05f, RH / 2f, 0f));
-        Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(RX + 0.05f, RH / 2f, 0f));
+        bool windowModel;
+        if (!Assets.BuildWalls(root, RX, RZ, RH, wallCol, 1.0f, 2.4f, out windowModel))
+        {
+            Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, -RZ - 0.05f));
+            Gfx.Box(root, new Vector3(RX * 2f, RH, 0.1f), wallCol, new Vector3(0f, RH / 2f, RZ + 0.05f));
+            Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(-RX - 0.05f, RH / 2f, 0f));
+            Gfx.Box(root, new Vector3(0.1f, RH, RZ * 2f), wallCol, new Vector3(RX + 0.05f, RH / 2f, 0f));
+        }
+        else if (windowModel) Gfx.Box(root, new Vector3(0.04f, RH, 2.4f), Cfg.Hex("#bfe6f7"), new Vector3(-RX - 0.2f, RH / 2f, 1.0f));
         Room.Body(root, new Vector3(RX * 2f + 4f, 3f, 2f), new Vector3(0f, 1.5f, -RZ - 1f));
         Room.Body(root, new Vector3(RX * 2f + 4f, 3f, 2f), new Vector3(0f, 1.5f, RZ + 1f));
         Room.Body(root, new Vector3(2f, 3f, RZ * 2f + 4f), new Vector3(-RX - 1f, 1.5f, 0f));
@@ -75,9 +80,12 @@ public static class Kitchen
         Room.Solid(root, 7.2f, -RZ, 8.4f, -RZ + 1.0f);
 
         // window + wall clock (west wall)
-        Gfx.Box(root, new Vector3(0.12f, 1.4f, 2.4f), Colors.White, new Vector3(-RX + 0.07f, 1.9f, 1.0f));
-        Gfx.Box(root, new Vector3(0.03f, 1.2f, 2.2f), Cfg.Hex("#bfe6f7"), new Vector3(-RX + 0.14f, 1.9f, 1.0f), 1f, true);
-        Gfx.Box(root, new Vector3(0.05f, 1.2f, 0.06f), Colors.White, new Vector3(-RX + 0.16f, 1.9f, 1.0f));
+        if (!windowModel)
+        {
+            Gfx.Box(root, new Vector3(0.12f, 1.4f, 2.4f), Colors.White, new Vector3(-RX + 0.07f, 1.9f, 1.0f));
+            Gfx.Box(root, new Vector3(0.03f, 1.2f, 2.2f), Cfg.Hex("#bfe6f7"), new Vector3(-RX + 0.14f, 1.9f, 1.0f), 1f, true);
+            Gfx.Box(root, new Vector3(0.05f, 1.2f, 0.06f), Colors.White, new Vector3(-RX + 0.16f, 1.9f, 1.0f));
+        }
         Gfx.Cyl(root, 0.3f, 0.3f, 0.05f, Colors.White, new Vector3(5.5f, 2.3f, -RZ + 0.04f), 1f, false, 24).RotationDegrees = new Vector3(90f, 0f, 0f);
         clock = Gfx.Text(root, "", 0.16f, Cfg.Hex("#c0392b"), new Vector3(5.5f, 2.3f, -RZ + 0.09f), false);
         Relabel();

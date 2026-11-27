@@ -21,7 +21,7 @@ public static class Cfg
         public int Drops = 1;                  // how many special golden drops Buba makes
         public float PanicMin = 0.7f, PanicMax = 1f;   // Buba panics when this fraction of the regular mess is cleaned (random in range)
         public float BubaSpeed = 1f, BumpCd = 1.5f, FuseMin = 3f, FuseMax = 5f;
-        public float PuddleR0 = 0.6f, PuddleMax = 1.7f, PuddleGrow = 0.02f;
+        public float PuddleR0 = 0.6f, PuddleMax = 1.2f, PuddleGrow = 0.02f;
         public bool Scraper, DirtyWater;
         public bool Boss;                      // level 4: Dona Ermelinda inspects the room
         public float BossGrace = 20f, BossDropMin = 7f, BossDropMax = 11f;
@@ -47,7 +47,7 @@ public static class Cfg
             {
                 No = 4, PerColor = 2, Puddles = 1, Crusts = 2, Drops = 0, Boss = true,
                 BubaSpeed = 1.1f,
-                PuddleR0 = 0.7f, PuddleMax = 1.9f, PuddleGrow = 0.025f,
+                PuddleR0 = 0.7f, PuddleMax = 1.3f, PuddleGrow = 0.025f,
                 Scraper = true, DirtyWater = true, Spray = 6,
                 BinPos = new[] { new Vector2(3.4f, 5.6f), new Vector2(-6.8f, 5.5f), new Vector2(7.5f, -5.3f), new Vector2(-8.3f, -2.6f) },
                 RugCircle = new Vector4(5.2f, 3.6f, 1.2f, 0f), RugRect = new Vector4(-3.2f, -3.3f, 3.2f, 0.9f),
@@ -61,7 +61,7 @@ public static class Cfg
                 No = 3, PerColor = 7, Puddles = 4, Crusts = 6, Drops = 3,
                 PanicMin = 0.3f, PanicMax = 0.6f,
                 BubaSpeed = 1.35f, BumpCd = 0.8f, FuseMin = 2f, FuseMax = 3.5f,
-                PuddleR0 = 0.9f, PuddleMax = 2.4f, PuddleGrow = 0.035f,
+                PuddleR0 = 0.8f, PuddleMax = 1.5f, PuddleGrow = 0.03f,
                 Scraper = true, DirtyWater = true, Spray = 8,
                 BinPos = new[] { new Vector2(-8.2f, 5.4f), new Vector2(8.0f, 5.4f), new Vector2(8.4f, -0.4f), new Vector2(-8.3f, -1.2f) },
                 TablePos = new Vector2(0f, -2.6f), TapX = 3.0f,
@@ -76,7 +76,7 @@ public static class Cfg
                 No = 2, PerColor = 6, Puddles = 3, Crusts = 4, Drops = 2,
                 PanicMin = 0.4f, PanicMax = 0.75f,
                 BubaSpeed = 1.2f, BumpCd = 1.0f, FuseMin = 2.5f, FuseMax = 4f,
-                PuddleR0 = 0.8f, PuddleMax = 2.2f, PuddleGrow = 0.03f,
+                PuddleR0 = 0.75f, PuddleMax = 1.4f, PuddleGrow = 0.028f,
                 Scraper = true, DirtyWater = true,
                 BinPos = new[] { new Vector2(-8.2f, 5.4f), new Vector2(8f, 5.4f), new Vector2(-8.3f, -3.8f), new Vector2(8.4f, -1.6f) },
                 TablePos = new Vector2(0f, -2.6f), TapX = -0.2f,
