@@ -17,7 +17,7 @@ public partial class Hud : CanvasLayer
     Button startBtn, langBtn, soundBtn;
     ColorRect victory;
     Label winH, winP;
-    Button restartBtn, nextBtn, levelBtn, menuBtn;
+    Button restartBtn, nextBtn, levelBtn, menuBtn, shopBtnP, shopBtnW;
     ColorRect scrapeBg, scrapeFill;
     bool overlayPaused;
     float bannerT;
@@ -195,6 +195,8 @@ public partial class Hud : CanvasLayer
         levelBtn.Pressed += () => g.SelectLevel(Cfg.Lvl.No % Cfg.MaxLevel + 1);
         menuBtn = MakeButton(box, 16, new Color(1f, 0.78f, 0.82f), Ink, new Vector2(220f, 40f));
         menuBtn.Pressed += () => g.ToMenu();
+        shopBtnP = MakeButton(box, 16, new Color(1f, 0.93f, 0.6f), Ink, new Vector2(220f, 40f));
+        shopBtnP.Pressed += () => g.OpenShop();
         langBtn = MakeButton(box, 14, Colors.White, Ink, new Vector2(180f, 36f));
         langBtn.Pressed += () => Loc.Toggle();
         soundBtn = MakeButton(box, 14, Colors.White, Ink, new Vector2(180f, 36f));
@@ -215,6 +217,8 @@ public partial class Hud : CanvasLayer
         restartBtn.Pressed += () => g.RestartPressed();
         nextBtn = MakeButton(box, 22, new Color(1f, 0.84f, 0.42f), new Color(0.29f, 0.2f, 0.4f), new Vector2(240f, 52f));
         nextBtn.Pressed += () => g.NextLevel();
+        shopBtnW = MakeButton(box, 18, new Color(1f, 0.93f, 0.6f), Ink, new Vector2(240f, 44f));
+        shopBtnW.Pressed += () => g.OpenShop();
     }
 
     // ---------------------------------------------------------------- layout and texts
@@ -270,7 +274,7 @@ public partial class Hud : CanvasLayer
         ovCtl.Text = Loc.T(g.IsTouch ? "touch" : "desk");
         string wk = Cfg.Lvl.No > 1 ? "win" + Cfg.Lvl.No + "_" : "win_";
         winH.Text = Loc.T(wk + "h"); winP.Text = Loc.T(wk + "p"); restartBtn.Text = Loc.T("restart");
-        nextBtn.Text = Loc.T("next_level");
+        nextBtn.Text = Loc.T("next_level"); shopBtnW.Text = Loc.T("menu_shop");
         menuBtn.Text = Loc.T("menu_main"); nextBtn.Visible = Cfg.Lvl.No < Cfg.MaxLevel;
         RelabelOverlay();
         Layout();
@@ -284,7 +288,7 @@ public partial class Hud : CanvasLayer
         ovText.Text = Loc.T(overlayPaused ? "pa_text" : (Cfg.Lvl.No > 1 ? "ov_text" + Cfg.Lvl.No : "ov_text"));
         startBtn.Text = Loc.T((overlayPaused ? "resume" : "start") + sfx);
         levelBtn.Text = Loc.T("level_btn", ("n", (Cfg.Lvl.No % Cfg.MaxLevel + 1).ToString()));
-        levelBtn.Visible = false; menuBtn.Text = Loc.T("menu_main"); menuBtn.Visible = overlayPaused;
+        levelBtn.Visible = false; menuBtn.Text = Loc.T("menu_main"); menuBtn.Visible = overlayPaused; shopBtnP.Text = Loc.T("menu_shop"); shopBtnP.Visible = overlayPaused;
     }
 
     // ---------------------------------------------------------------- show / hide
@@ -304,6 +308,7 @@ public partial class Hud : CanvasLayer
     public void ShowVictory()
     {
         victory.Visible = true;
+        winP.Text = Loc.T(Cfg.Lvl.No > 1 ? "win" + Cfg.Lvl.No + "_p" : "win_p") + "\n" + Loc.T("coins_run", ("n", g.RunCoins.ToString()), ("t", Save.Coins.ToString()));
         var rng = new RandomNumberGenerator(); rng.Randomize();
         Vector2 v = GetViewport().GetVisibleRect().Size;
         string[] cols = { "#ffd66b", "#ff8fb1", "#8fd3ff", "#7bd88f", "#b79cff", "#ffffff" };
@@ -334,7 +339,7 @@ public partial class Hud : CanvasLayer
         else count.Text = Loc.T("cleaned", ("n", g.Cleaned.ToString()), ("t", g.TotalNow.ToString()));
         string st = Loc.T(g.Audio != null && g.Audio.Muted ? "snd_off" : "snd_on");
         if (g.IsTouch) st = st.Replace(" (M)", "");      // no keyboard on a phone
-        snd.Text = st;
+        snd.Text = Loc.T("coins_hud", ("n", Save.Coins.ToString())) + "  ·  " + st;
         soundBtn.Text = st;
 
         bool ready;
@@ -359,10 +364,10 @@ public partial class Hud : CanvasLayer
         {
             if (g.ToolSel == Tool.Spray)
             {
-                float sf = Cfg.Lvl.Spray > 0 ? (float)g.Charges / Cfg.Lvl.Spray : 0f;
+                float sf = Cfg.SprayMax > 0 ? (float)g.Charges / Cfg.SprayMax : 0f;
                 waterFill.Position = Vector2.Zero; waterFill.Size = new Vector2(waterBg.Size.X * sf, waterBg.Size.Y);
                 waterFill.Color = new Color(0.37f, 0.78f, 0.91f);
-                waterLbl.Text = Loc.T("spray_bar", ("n", g.Charges.ToString()), ("t", Cfg.Lvl.Spray.ToString()));
+                waterLbl.Text = Loc.T("spray_bar", ("n", g.Charges.ToString()), ("t", Cfg.SprayMax.ToString()));
             }
             else
             {

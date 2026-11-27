@@ -49,3 +49,9 @@ The game opens on a main menu (Play, Levels, Settings, Quit) over a slow camera 
 
 ## Level 4: The Inspection (boss)
 Dona Ermelinda enters after 20 s and walks a fixed route of 6 marked spots (gold ring on the floor and minimap), inspecting each for 3.5 s with her white glove. Any mess near her is a strike (3 strikes restart the level). Buba keeps dropping new poops and puddles. Clear all 6 spots to win.
+
+## Shop and coins
+Earn 2 coins for every poop dumped or puddle cleaned (4 for Buba's special drops). The shop is in the main menu, the pause screen and the victory panel; the list scrolls. Spend them in the main menu Shop: wide shovel (25, carry 2 poops of the same colour), big bucket (20, mop water lasts longer), non-slip slippers (30), spray refill pack (40, +4 charges), giant shovel (60, carry 3, needs the wide shovel). With a bigger shovel, press the action near another poop of the same colour (away from a bin) to stack it; a bump or slip spills the whole stack. Coins and purchases are saved in user://save.cfg.
+
+## Dropping what you carry
+Press the same action button while carrying, away from any bin and with nothing stackable in reach, to put the poop down in front of you, e.g. to grab a different colour first. A stack from the wide/giant shovel is dropped as separate poops.

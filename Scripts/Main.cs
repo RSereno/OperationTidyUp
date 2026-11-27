@@ -21,11 +21,11 @@ public partial class Main : Node3D
     float panicEndT = -1f;
     public int DropsLeft;                       // special drops Buba still has to make
     public int TotalNow { get { return Cfg.RegTotal + SpecialTotal; } }
-    public int CarryType;
+    public int CarryType, CarryCount = 1;
     public Tool ToolSel = Tool.Shovel;
     public bool IsTouch;
     public bool ShowMinimap = true;
-    public MainMenu Menu;
+    public MainMenu Menu, ShopMenu;
     float menuT;
 
     public readonly List<Poop> Poops = new List<Poop>();
@@ -59,7 +59,7 @@ public partial class Main : Node3D
     Vector2 mv;
     int runId;
     Node3D shovel, mop, scraper, spray, carried;
-    public int Charges;
+    public int Charges, RunCoins;
     bool twistDone;
     // level 4 boss
     public Ermelinda Boss;
@@ -138,6 +138,13 @@ public partial class Main : Node3D
         Cfg.SetLevel(n);
         Cfg.AutoStart = true;
         GetTree().ReloadCurrentScene();
+    }
+
+    // shop from the pause screen or the victory panel
+    public void OpenShop()
+    {
+        if (ShopMenu != null && IsInstanceValid(ShopMenu)) return;
+        ShopMenu = new MainMenu(); AddChild(ShopMenu); ShopMenu.Init(this, true);
     }
 
     // from the pause screen
@@ -267,7 +274,7 @@ public partial class Main : Node3D
         SpecialTotal = Cfg.Lvl.Drops; SpecialDone = 0; finalDropped = false; panicEndT = -1f; CarrySpecial = false; CarrySmall = false;
         DropsLeft = 0; dirtyWarned = false; Scraping = false; ScrapeP = 0f; CrustT = null;
         PanicAt = Mathf.Clamp(Mathf.RoundToInt(Cfg.RegTotal * Rand(Cfg.Lvl.PanicMin, Cfg.Lvl.PanicMax)), 1, Cfg.RegTotal);   // random moment, level 1: ~63%..90%
-        Charges = Cfg.Lvl.Spray; twistDone = false;
+        Charges = Cfg.SprayMax; twistDone = false; RunCoins = 0; CarryCount = 1;
         Strikes = 0; StopsDone = 0; bossFailT = 0f; GraceLeft = Cfg.Lvl.BossGrace; bossDropT = Cfg.Lvl.BossGrace + Rand(2f, 4f);
         if (Boss != null) Boss.ResetState();
         if (Cfg.Lvl.Boss) PanicAt = int.MaxValue;
@@ -291,6 +298,7 @@ public partial class Main : Node3D
     public void StartPressed()
     {
         if (bossFailT > 0f) return;
+        if (ShopMenu != null && IsInstanceValid(ShopMenu)) return;
         if (Mode == GameMode.Title) { Reset(GameMode.Playing); }
         else if (Mode == GameMode.Paused) { Mode = GameMode.Playing; Audio.SetMode(Phase == 2 ? "panic" : "calm"); }
         else return;
@@ -559,7 +567,7 @@ public partial class Main : Node3D
             if (len > 1f) { ix /= len; iz /= len; }
             var fwd = new Vector3(-Mathf.Sin(Yaw), 0f, -Mathf.Cos(Yaw));
             var right = new Vector3(Mathf.Cos(Yaw), 0f, -Mathf.Sin(Yaw));
-            float sp = Cfg.WalkSpeed * (HasCarry ? Cfg.CarrySlow : 1f) * (slowT > 0f ? 0.5f : 1f) * (sliding ? 0.25f : 1f);
+            float sp = Cfg.WalkSpeed * (HasCarry ? Cfg.CarrySlow * (1f - 0.06f * (CarryCount - 1)) : 1f) * (slowT > 0f ? 0.5f : 1f) * (sliding ? 0.25f : 1f);
             Vector3 dir = fwd * iz + right * ix;
             move = dir * sp;
             mv = new Vector2(dir.X, dir.Z);
@@ -646,7 +654,7 @@ public partial class Main : Node3D
                 Scrubbing = true; mopT += dt; scrubSnd -= dt;
                 // level 2: the water gets filthy, so the mop works worse the less clean water is left
                 float eff = Cfg.Lvl.DirtyWater ? 0.3f + 0.7f * Water : 1f;
-                Water = Mathf.Max(0f, Water - (Cfg.Lvl.DirtyWater ? 0.2f : 0.17f) * dt);
+                Water = Mathf.Max(0f, Water - (Cfg.Lvl.DirtyWater ? 0.2f : 0.17f) * (Shop.Has("bucket") ? 0.55f : 1f) * dt);
                 q.R -= 0.5f * eff * dt;
                 if (Cfg.Lvl.DirtyWater && Water < 0.3f && !dirtyWarned) { dirtyWarned = true; Say(Loc.T("dirty_warn"), 3f); }
                 if (scrubSnd <= 0f)
@@ -797,6 +805,7 @@ public partial class Main : Node3D
             shovel.Rotation = new Vector3((HasCarry ? 1.3f : 0.95f) + swing * 0.9f, 0f, 0.12f);
             shovel.Position = new Vector3(0.36f, -0.3f + swing * 0.08f + bobY * 0.5f, -0.62f - swing * 0.25f);
             carried.Visible = HasCarry;
+            carried.Scale = Vector3.One * (0.7f * (1f + 0.3f * (CarryCount - 1)));
             carried.Rotation = new Vector3(-Mathf.Pi / 2f, 0f, Mathf.Sin(Clock * 6f) * 0.07f);
         }
     }
@@ -992,7 +1001,13 @@ public partial class Main : Node3D
     {
         swingT = 0.3f; coolT = 0.38f;
         Audio.Swish();
-        if (HasCarry) { TryDump(); return; }
+        if (HasCarry)
+        {
+            var st = StackTarget();
+            if (st != null) { PickUp(st); return; }
+            if (BinInReach() == null) { DropByChoice(); return; }      // nothing to dump into here: the same button puts it down
+            TryDump(); return;
+        }
         var t = FindTarget();
         if (t != null) { PickUp(t); return; }
         var l = FindLump();
@@ -1001,11 +1016,33 @@ public partial class Main : Node3D
         else if (CrustInReach() != null) Say(Loc.T(IsTouch ? "pr_crust_touch" : "pr_crust_desk"), 2.4f);
     }
 
+    // drop what you carry right in front of you (e.g. to grab a different poop first)
+    public void DropByChoice()
+    {
+        if (Mode != GameMode.Playing || !HasCarry) return;
+        Vector2 f = Fwd;
+        string cn = Loc.TypeName(CarryType);
+        DropCarried(f.X, f.Y);
+        Say(Loc.T("dropped_choice", ("c", cn)), 2f);
+    }
+
+    // with a bigger shovel: grab another poop of the same colour while carrying one (not near a bin)
+    Poop StackTarget()
+    {
+        if (!HasCarry || CarryCount >= Cfg.CarryMax || CarrySpecial || CarryType == Cfg.Rad || BinInReach() != null) return null;
+        var t = FindTarget();
+        if (t == null || t.Type != CarryType || t.Special || t.Type == Cfg.Rad || t.Glow) return null;
+        return t;
+    }
+
     void PickUp(Poop p)
     {
+        bool stack = HasCarry;
         Poops.Remove(p);
         p.QueueFree();
         CleanedSpots.Add(p.P);
+        if (stack) CarryCount++;
+        else CarryCount = 1;
         HasCarry = true; CarryType = p.Type; CarryGlow = p.Glow; CarrySpecial = p.Special; CarrySmall = p.Size < 1f;
         // (grabbing the golden one puts the fuse out: the poop node is gone)
         var body = Cfg.Types[p.Type].Body;
@@ -1013,7 +1050,8 @@ public partial class Main : Node3D
         Audio.Scoop(); Haptic(15);
         Burst(p.Position.X, 0.2f, p.Position.Z, new[] { body[0], body[1] }, 10, 1.4f, 0.6f, 0.05f);
         shake = Mathf.Max(shake, 0.06f);
-        Say(Loc.T("got", ("c", Loc.TypeName(p.Type))), 3.5f);
+        if (CarryCount > 1) Say(Loc.T("stacked", ("c", Loc.TypeName(p.Type)), ("n", CarryCount.ToString()), ("m", Cfg.CarryMax.ToString())), 3.5f);
+        else Say(Loc.T("got", ("c", Loc.TypeName(p.Type))), 3.5f);
     }
 
     void TryDump()
@@ -1029,9 +1067,11 @@ public partial class Main : Node3D
     {
         var tp = Cfg.Types[CarryType];
         bool wasSpecial = CarrySpecial;
-        HasCarry = false; CarrySpecial = false;
-        Cleaned++;
-        if (wasSpecial) SpecialDone++; else RegDumped++;
+        int n = CarryCount;
+        HasCarry = false; CarrySpecial = false; CarryCount = 1;
+        Cleaned += n;
+        if (wasSpecial) SpecialDone++; else RegDumped += n;
+        AddCoins(wasSpecial ? 2 : n);
         Audio.Splat(); Haptic(30);
         Burst(bin.Position.X, 1.1f, bin.Position.Z, new[] { tp.Body[0], tp.Body[1], tp.Body[2], Cfg.Hex("#ffe27a") }, 18, 2.2f, 0.9f, 0.07f);
         shake = Mathf.Max(shake, 0.15f);
@@ -1046,6 +1086,13 @@ public partial class Main : Node3D
         else Say(Loc.T("togo", ("p", prefix), ("n", Mathf.Max(0, TotalNow - Cleaned).ToString())), 2f);
     }
 
+    void AddCoins(int n)
+    {
+        n *= 2;                              // coin multiplier
+        Save.Coins += n; RunCoins += n;
+        Save.Store();
+    }
+
     void CleanPuddle(Puddle q)
     {
         Puddles.Remove(q);
@@ -1053,6 +1100,7 @@ public partial class Main : Node3D
         q.QueueFree();
         Cleaned++;
         if (q.Special) SpecialDone++; else RegDumped++;
+        AddCoins(1);
         Audio.Ding(); Haptic(25); shake = Mathf.Max(shake, 0.1f);
         Scrubbing = false;
         Scored(Loc.T("squeaky"));
@@ -1084,6 +1132,19 @@ public partial class Main : Node3D
         var np = AddPoop(x, z, CarryGlow, CarryType, "", Colors.White, CarrySpecial, CarrySmall);
         if (CarrySpecial && CarryGlow) np.Fuse = Rand(Cfg.Lvl.FuseMin, Cfg.Lvl.FuseMax);   // dropped the special one: the fuse starts again
         CarrySpecial = false;
+        for (int k = 1; k < CarryCount; k++)        // the rest of the stack spills around it
+        {
+            float ex = x, ez = z;
+            for (int tries = 0; tries < 8; tries++)
+            {
+                float ea = Rand(0f, Mathf.Tau);
+                float cx = Mathf.Clamp(x + Mathf.Sin(ea) * 0.55f, -Cfg.RoomX + 0.5f, Cfg.RoomX - 0.5f);
+                float cz = Mathf.Clamp(z + Mathf.Cos(ea) * 0.55f, -Cfg.RoomZ + 0.5f, Cfg.RoomZ - 0.5f);
+                if (!Room.InFurniture(cx, cz, 0.3f)) { ex = cx; ez = cz; break; }
+            }
+            AddPoop(ex, ez, false, CarryType, "", Colors.White);
+        }
+        CarryCount = 1;
         Burst(x, 0.3f, z, Cfg.Types[CarryType].Body, 10, 1.6f, 0.6f, 0.05f);
         Audio.Thud();
     }
@@ -1261,7 +1322,8 @@ public partial class Main : Node3D
             var br = BinInReach();
             if (br != null && br.Type == CarryType) { ready = true; return K + Loc.T("pr_dump", ("c", cn)); }
             if (br != null) return Loc.T("pr_wrong", ("c", cn));
-            return Loc.T("pr_carry", ("c", cn));
+            if (StackTarget() != null) { ready = true; return K + Loc.T("pr_stack", ("c", cn)); }
+            return Loc.T("pr_carry", ("c", cn)) + Loc.T(IsTouch ? "drop_hint_touch" : "drop_hint");
         }
         if (ToolSel == Tool.Mop)
         {

@@ -6,16 +6,23 @@ public partial class MainMenu : CanvasLayer
 {
     Main g;
     Control root;
-    VBoxContainer pageMain, pageLevels, pageSettings;
+    VBoxContainer pageMain, pageLevels, pageSettings, pageShop;
+    Label coinsL;
+    Button shopBtn, back3;
+    readonly List<Button> shopBtns = new List<Button>();
     Label titleL, subL;
     Button playBtn, levelsBtn, settingsBtn, quitBtn;
     Button langBtn, soundBtn, miniBtn, back1, back2;
     readonly List<Button> levelBtns = new List<Button>();
     static readonly Color Ink = new Color(0.29f, 0.2f, 0.4f);
 
-    public void Init(Main game)
+    ScrollContainer shopScroll;
+    Control gapC;
+    bool shopOnly;
+
+    public void Init(Main game, bool shopOnlyMode = false)
     {
-        g = game;
+        g = game; shopOnly = shopOnlyMode;
         Layer = 20;
         root = new Control();
         root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
@@ -32,12 +39,13 @@ public partial class MainMenu : CanvasLayer
 
         titleL = Lbl(col, 54, new Color(1f, 0.84f, 0.42f)); titleL.AddThemeConstantOverride("outline_size", 14);
         subL = Lbl(col, 26, Colors.White); subL.AddThemeConstantOverride("outline_size", 10);
-        var gap = new Control(); gap.CustomMinimumSize = new Vector2(0f, 14f); col.AddChild(gap);
+        gapC = new Control(); gapC.CustomMinimumSize = new Vector2(0f, 14f); col.AddChild(gapC);
 
-        pageMain = Page(col); pageLevels = Page(col); pageSettings = Page(col);
+        pageMain = Page(col); pageLevels = Page(col); pageSettings = Page(col); pageShop = Page(col);
 
         playBtn = Btn(pageMain, new Color(1f, 0.84f, 0.42f), 26, 300f, 60f, () => g.PlayLevel(Save.Unlocked));
         levelsBtn = Btn(pageMain, new Color(0.8f, 0.9f, 1f), 20, 300f, 48f, () => Show(1));
+        shopBtn = Btn(pageMain, new Color(1f, 0.93f, 0.6f), 20, 300f, 48f, () => Show(3));
         settingsBtn = Btn(pageMain, Colors.White, 20, 300f, 48f, () => Show(2));
         quitBtn = Btn(pageMain, new Color(1f, 0.78f, 0.82f), 18, 300f, 42f, () => g.GetTree().Quit());
         quitBtn.Visible = OS.GetName() != "Android" && OS.GetName() != "iOS";
@@ -49,13 +57,28 @@ public partial class MainMenu : CanvasLayer
         }
         back1 = Btn(pageLevels, new Color(0.9f, 0.9f, 0.95f), 18, 340f, 42f, () => Show(0));
 
+        coinsL = Lbl(pageShop, 26, new Color(1f, 0.84f, 0.42f)); coinsL.AddThemeConstantOverride("outline_size", 10);
+        shopScroll = new ScrollContainer();
+        shopScroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
+        shopScroll.CustomMinimumSize = new Vector2(450f, 300f);
+        pageShop.AddChild(shopScroll);
+        var shopList = new VBoxContainer(); shopList.AddThemeConstantOverride("separation", 8);
+        shopList.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        shopScroll.AddChild(shopList);
+        for (int i = 0; i < Shop.Items.Length; i++)
+        {
+            var it = Shop.Items[i];
+            shopBtns.Add(Btn(shopList, Colors.White, 17, 420f, 66f, () => { if (Shop.Buy(it)) Relabel(); }));
+        }
+        back3 = Btn(pageShop, new Color(0.9f, 0.9f, 0.95f), 18, 420f, 42f, () => { if (shopOnly) Close(); else Show(0); });
+
         langBtn = Btn(pageSettings, Colors.White, 18, 340f, 46f, () => Loc.Toggle());
         soundBtn = Btn(pageSettings, Colors.White, 18, 340f, 46f, () => { if (g.Audio != null) g.Audio.ToggleMute(); Relabel(); });
         miniBtn = Btn(pageSettings, Colors.White, 18, 340f, 46f, () => { g.ShowMinimap = !g.ShowMinimap; Save.Minimap = g.ShowMinimap; Save.Store(); Relabel(); });
         back2 = Btn(pageSettings, new Color(0.9f, 0.9f, 0.95f), 18, 340f, 42f, () => Show(0));
 
         Loc.Changed += Relabel;
-        Show(0);
+        Show(shopOnly ? 3 : 0);
         Relabel();
         if (g.Ui != null) g.Ui.Visible = false;
     }
@@ -70,7 +93,10 @@ public partial class MainMenu : CanvasLayer
 
     void Show(int page)
     {
-        pageMain.Visible = page == 0; pageLevels.Visible = page == 1; pageSettings.Visible = page == 2;
+        pageMain.Visible = page == 0; pageLevels.Visible = page == 1; pageSettings.Visible = page == 2; pageShop.Visible = page == 3;
+        bool shop = page == 3;
+        titleL.Visible = !shop; subL.Visible = !shop; gapC.Visible = !shop;
+        if (shop) shopScroll.CustomMinimumSize = new Vector2(450f, Mathf.Clamp(g.GetViewport().GetVisibleRect().Size.Y - 190f, 130f, 420f));
         Relabel();
     }
 
@@ -82,6 +108,16 @@ public partial class MainMenu : CanvasLayer
         playBtn.Text = Loc.T("menu_play") + "  ·  " + Loc.T("lvl_name" + Save.Unlocked);
         levelsBtn.Text = Loc.T("menu_levels");
         settingsBtn.Text = Loc.T("menu_settings");
+        shopBtn.Text = Loc.T("menu_shop");
+        coinsL.Text = Loc.T("shop_title", ("n", Save.Coins.ToString()));
+        back3.Text = Loc.T("menu_back");
+        for (int i = 0; i < Shop.Items.Length; i++)
+        {
+            var it = Shop.Items[i];
+            bool owned = Shop.Has(it.Id);
+            shopBtns[i].Text = Loc.T("item_" + it.Id) + "  ·  " + (owned ? Loc.T("shop_owned") : it.Price + " " + Loc.T("coins_word")) + "\n" + Loc.T("item_" + it.Id + "_d");
+            shopBtns[i].Disabled = !Shop.CanBuy(it);
+        }
         quitBtn.Text = Loc.T("menu_quit");
         back1.Text = Loc.T("menu_back"); back2.Text = Loc.T("menu_back");
         for (int i = 0; i < levelBtns.Count; i++)

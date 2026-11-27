@@ -99,7 +99,9 @@ public static class Cfg
 
     static Cfg() { SetLevel(1); }
 
-    public static readonly bool AntiSlip = false;       // future upgrade: non-slip slippers
+    public static bool AntiSlip { get { return Shop.Has("slippers"); } }
+    public static int CarryMax { get { return 1 + (Shop.Has("shovel2") ? 1 : 0) + (Shop.Has("shovel3") ? 1 : 0); } }
+    public static int SprayMax { get { return Lvl.Spray > 0 ? Lvl.Spray + (Shop.Has("spray") ? 4 : 0) : 0; } }
     public const float PulseT = 3.6f, PulseLife = 1.2f, PulseR = 2.9f;
     public static Vector2 Table { get { return Lvl.TablePos; } }
 
