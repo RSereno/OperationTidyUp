@@ -21,6 +21,11 @@ jobs:
     runs-on: ubuntu-22.04
     container:
       image: barichello/godot-ci:mono-4.7.2
+    env:
+      KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+      KEYSTORE_ALIAS: ${{ secrets.RELEASE_KEYSTORE_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,17 +52,14 @@ jobs:
 
       # The container's HOME is /github/home, so the image's pre-made editor
       # settings are not picked up. Write the Android settings explicitly.
-      - name: Configure Godot editor settings for Android
-        run: |
+      # Decode the Base64 keystore secret back into a physical .jks file
+      - name: Decode Keystore and Configure Godot editor settings for Android
+        run: |          
+          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/release-key.jks
+
           JAVA_HOME_DIR="$(dirname "$(dirname "$(readlink -f "$(which javac)")")")"
           SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
-          echo "JAVA: $JAVA_HOME_DIR"
-          echo "ANDROID SDK: $SDK_DIR"
-          ls "$SDK_DIR" || true
-          keytool -genkeypair -v -keystore /tmp/debug.keystore \
-            -storepass android -alias androiddebugkey -keypass android \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
+         
           mkdir -p ~/.config/godot
           cat > ~/.config/godot/editor_settings-4.7.tres <<EOF
           [gd_resource type="EditorSettings" format=3]
@@ -65,24 +67,24 @@ jobs:
           [resource]
           export/android/java_sdk_path = "$JAVA_HOME_DIR"
           export/android/android_sdk_path = "$SDK_DIR"
-          export/android/debug_keystore = "/tmp/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
+          export/android/release_keystore = "/tmp/release-key.jks"
+          export/android/release_keystore_user = "$KEYSTORE_ALIAS"
+          export/android/release_keystore_pass = "$KEYSTORE_PASSWORD"
+          export/android/release_keystore_pub_pass = "$KEY_PASSWORD"
           EOF
           sed -i 's/^          //' ~/.config/godot/editor_settings-4.7.tres
-          cat ~/.config/godot/editor_settings-4.7.tres
 
       - name: Import resources
         run: |
           cd "$PROJECT_PATH"
           godot --headless --import || true
 
-      - name: Export debug APK
+      - name: Export release APK
         run: |
           mkdir -v -p build/android
           EXPORT_DIR="$(readlink -f build)"
           cd "$PROJECT_PATH"
-          godot --headless --verbose --export-debug "$PRESET_NAME" "$EXPORT_DIR/android/$EXPORT_NAME.apk"
+          godot --headless --verbose --export-release "$PRESET_NAME" "$EXPORT_DIR/android/$EXPORT_NAME.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
